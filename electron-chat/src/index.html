@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat App</title>
+    <link rel="stylesheet" href="./styles/main.css" />
+</head>
+<body>
+    <div id="sidebar" class="expanded">
+        <div id="icon-bar">
+            <div class="sidebar-icon active" data-tab="models">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <!-- Connection Lines -->
+                    <path d="M4 10L12 6M4 14L12 18M12 6L20 10M12 18L20 14"/>
+                    <!-- Nodes -->
+                    <circle cx="4" cy="10" r="2"/>
+                    <circle cx="4" cy="14" r="2"/>
+                    <circle cx="12" cy="6" r="2"/>
+                    <circle cx="12" cy="18" r="2"/>
+                    <circle cx="20" cy="10" r="2"/>
+                    <circle cx="20" cy="14" r="2"/>
+                </svg>
+                <span class="icon-tooltip">Models</span>
+            </div>
+            <div class="sidebar-icon" data-tab="contexts">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
+                </svg>
+                <span class="icon-tooltip">Contexts</span>
+            </div>
+            <div class="sidebar-icon" data-tab="prompts">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <line x1="10" y1="9" x2="8" y2="9"></line>
+                </svg>
+                <span class="icon-tooltip">Prompts</span>
+            </div>
+            <div class="sidebar-icon" data-tab="instructions">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path>
+                    <rect x="9" y="3" width="6" height="4" rx="1"></rect>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                    <line x1="8" y1="16" x2="16" y2="16"></line>
+                </svg>
+                <span class="icon-tooltip">Instructions</span>
+            </div>
+            <div class="sidebar-icon" data-tab="history">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span class="icon-tooltip">History</span>
+            </div>
+            <button id="toggle-sidebar">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M15 18l-6-6 6-6"></path>
+                </svg>
+            </button>
+            <div class="sidebar-icon" data-tab="events">
+                <!-- console icon -->
+                <!-- <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="4 17 10 11 4 5"></polyline>
+                    <line x1="12" y1="19" x2="20" y2="19"></line>
+                </svg> -->
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                <span class="icon-tooltip">Events</span>
+            </div>
+        </div>
+        <div id="resize-handle"></div>
+        <div id="sidebar-content">
+            <div id="models-content" class="tab-content">
+                <div class="content-header">
+                    <h3>Model Configurations</h3>
+                    <button id="add-model-config-button" class="header-add-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div id="add-model-config-form" style="display: none;">
+                    <div class="form-group">
+                        <label for="config-name">Name:</label>
+                        <input type="text" id="config-name" placeholder="Enter configuration name">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="model-select">Model:</label>
+                        <select id="model-select">
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                    </div>
+                    
+                    <div id="server-url-container" class="form-group" style="display: none;">
+                        <label for="server-url">Server URL:</label>
+                        <input type="url" id="server-url" placeholder="http://localhost:1234/v1" value="http://localhost:1234/v1">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="temperature-slider">Temperature:</label>
+                        <input type="range" id="temperature-slider" min="0" max="2" step="0.1" value="0.7">
+                        <span id="temperature-value">0.7</span>
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="save-model-config">Save</button>
+                        <button id="cancel-model-config">Cancel</button>
+                    </div>
+                </div>
+                
+                <div id="models-list">
+                    <!-- Model configurations will be added here dynamically -->
+                </div>
+            </div>
+            <div id="prompts-content" class="tab-content" style="display: none;">
+                <div class="content-header">
+                    <h3>Prompts</h3>
+                    <button id="add-prompt-button" class="header-add-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div id="prompts-list">
+                    <!-- Prompts will be dynamically added here -->
+                </div>
+            </div>
+            <div id="instructions-content" class="tab-content" style="display: none;">
+                <div class="content-header">
+                    <h3>Instructions</h3>
+                    <button id="add-instruction-button" class="header-add-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div id="instructions-list">
+                    <!-- Instructions will be dynamically added here -->
+                </div>
+            </div>
+            <div id="contexts-content" class="tab-content">
+                <div class="content-header">
+                    <h3>Contexts</h3>
+                    <button id="add-context-button" class="header-add-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div id="add-context-form" style="display: none;">
+                    <div class="form-group">
+                        <label for="context-type">Type:</label>
+                        <select id="context-type">
+                            <option value="general">General</option>
+                            <option value="coding">Coding</option>
+                            <option value="research">Research</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="context-name">Name:</label>
+                        <input type="text" id="context-name" placeholder="Enter context name">
+                    </div>
+                    
+                    <div class="button-group">
+                        <button id="save-context">Save</button>
+                        <button id="cancel-context">Cancel</button>
+                    </div>
+                </div>
+                
+                <div id="contexts-list">
+                    <!-- Contexts will be added here dynamically -->
+                </div>
+            </div>
+            <div id="history-content" class="tab-content">
+                <div class="content-header">
+                    <h3>History</h3>
+                    <button id="new-chat-button" class="header-add-button">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div id="history-list">
+                    <!-- History items will be dynamically injected here -->
+                </div>
+            </div>
+            <div id="events-content" class="tab-content" style="display: none;">
+                <div class="content-header">
+                    <h3>Server Events</h3>
+                    <button id="clear-events" class="header-delete-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                        </svg>
+                    </button>
+                </div>
+                <div id="events-container">
+                    <!-- Events will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="main-content">
+        <div id="chat"></div>
+        <div class="bottom-container">
+            <div class="input-container">
+                <textarea 
+                    id="message-input" 
+                    placeholder="Type a message... (Press Enter to send, Shift+Enter for new line)"
+                    rows="1"
+                ></textarea>
+                <div class="controls-container">
+                    <!-- Left side - buttons -->
+                    <div class="button-stack">
+                        <button id="send-button">Send</button>
+                        <button id="cancel-button">Cancel</button>
+                    </div>
+                    <!-- Right side - instruction and file areas -->
+                    <div class="attachment-stack">
+                        <!-- Attachments section -->
+                        <div class="attachments-section">
+                            <div class="attachment-buttons">
+                                <button class="add-attachment-button">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                                    </svg>
+                                </button>
+                                <button class="clear-attachments-button">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="attached-items">
+                                <!-- Attached items go here -->
+                            </div>
+                            <div id="search-container">
+                                <div id="search-results"></div>
+                                <input type="text" id="search-box" placeholder="Search and attach models, contexts, and instructions...">
+                            </div>
+                        </div>
+                        <!-- Files section -->
+                        <div class="files-section">
+                            <div id="drop-zone">
+                                <span>Drag files here to attach</span>
+                            </div>
+                            <div id="attached-files">
+                                <!-- Attached files will appear here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="token-summary">
+                <h3>Session Summary</h3>
+                <div>Responses: <span id="total-messages">0</span></div>
+                <div>Input Tokens: <span id="total-input-tokens">0</span></div>
+                <div>Output Tokens: <span id="total-output-tokens">0</span></div>
+                <div>Input Cost: $<span id="total-input-cost">0.00000</span></div>
+                <div>Output Cost: $<span id="total-output-cost">0.00000</span></div>
+                <div>Total Cost: $<span id="total-cost">0.00000</span></div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="./app.js"></script>
+</body>
+</html>

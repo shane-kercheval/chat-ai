@@ -1,0 +1,85 @@
+conversations:
+  - conversation_id: "conv-1"
+    entries:
+      - entry_id: "entry1-1"
+        chat_message:
+          role: "USER"
+          content: "What is the capital of France?"
+        timestamp: "2024-12-23T14:00:00Z"
+      - entry_id: "entry1-2"
+        single_model_response:
+          message:
+            role: "ASSISTANT"
+            content: "The capital of France is Paris."
+          config_snapshot:
+            model_family: "OpenAI"
+            model_name: "gpt-4o-mini"
+            model_parameters:
+              temperature: 0.2
+          model_index: 0
+        timestamp: "2024-12-23T14:00:01Z"
+      - entry_id: "entry1-3"
+        chat_message:
+          role: "USER"
+          content: "What is its population?"
+        timestamp: "2024-12-23T14:00:02Z"
+      - entry_id: "entry1-4"
+        single_model_response:
+          message:
+            role: "ASSISTANT"
+            content: "Paris has a population of about 2.2 million people in the city proper."
+          config_snapshot:
+            model_family: "OpenAI"
+            model_name: "gpt-4o-mini"
+            model_parameters:
+              temperature: 0.2
+          model_index: 0
+        timestamp: "2024-12-23T14:00:03Z"
+
+  - conversation_id: "conv-2"
+    entries:
+      - entry_id: "entry2-1"
+        chat_message:
+          role: "USER"
+          content: "Compare Python and JavaScript"
+        timestamp: "2024-12-23T14:30:00Z"
+      - entry_id: "entry2-2"
+        single_model_response:
+          message:
+            role: "ASSISTANT"
+            content: "Python and JavaScript are both popular programming languages, but they serve different primary purposes. Python is known for its simplicity and readability, often used in backend development, data science, and AI. JavaScript was originally designed for web browsers but has evolved to be used in many environments."
+          config_snapshot:
+            model_family: "OpenAI"
+            model_name: "gpt-4o-mini"
+            model_parameters:
+              temperature: 0.5
+              max_tokens: 256
+          model_index: 0
+        timestamp: "2024-12-23T14:30:01Z"
+      - entry_id: "entry2-3"
+        chat_message:
+          role: "USER"
+          content: "Which is better for a beginner?"
+        timestamp: "2024-12-23T14:30:02Z"
+      - entry_id: "entry2-4"
+        multi_model_response:
+          responses:
+            - message:
+                role: "ASSISTANT"
+                content: "For beginners, Python is often considered the better choice due to its clean syntax and gentle learning curve."
+              config_snapshot:
+                model_family: "OpenAI"
+                model_name: "gpt-4o-mini"
+                model_parameters:
+                  temperature: 0.8
+              model_index: 0
+            - message:
+                role: "ASSISTANT"
+                content: "I recommend starting with Python because of its readability and extensive learning resources, though JavaScript is also a viable option if you're interested in web development."
+              config_snapshot:
+                model_family: "Claude"
+                model_name: "claude-3-haiku-latest"
+                model_parameters:
+                  temperature: 0.2
+              model_index: 1
+        timestamp: "2024-12-23T14:30:03Z"

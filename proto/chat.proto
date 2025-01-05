@@ -1,0 +1,323 @@
+syntax = "proto3";
+package proto.generated;
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Represents the agent's chat service.
+service CompletionService {
+    rpc chat(ChatRequest) returns (stream ChatStreamResponse);
+    rpc streamEvents(EventStreamRequest) returns (stream ServerEvent);
+    // get the models that are supported by the service
+    rpc get_supported_models(google.protobuf.Empty) returns (GetSupportedModelsResponse);
+    // get conversation history
+    rpc get_history(google.protobuf.Empty) returns (GetHistoryResponse);
+    rpc delete_conversation(DeleteConversationRequest) returns (google.protobuf.Empty);
+
+    // deletes an entry and all subsequent entries in a conversation
+    rpc truncate_conversation(TruncateConversationRequest) returns (google.protobuf.Empty);
+    // branch: i.e. clone a conversation and continue from a specific entry
+    rpc branch_conversation(BranchConversationRequest) returns (BranchConversationResponse);
+
+    rpc multi_response_select(MultiResponseSelectRequest) returns (google.protobuf.Empty);
+    // select multi-model response (e.g. event id and model index)
+    // branch conversation e.g. (event id and optional model index)
+}
+
+service ContextService {
+    // add a single resource to the context service
+    rpc add_resource(AddResourceRequest) returns (google.protobuf.Empty);
+    rpc get_resource(GetResourceRequest) returns (GetResourceResponse);
+    // get context from existing resources
+    rpc get_context(ContextRequest) returns (ContextResponse);
+    // get context by querying non-local resources (that have to be processed in real-time)
+    // Each call is treated as a new query and the results are not stored (although we could set up caching)
+    // rpc get_context_from_non_local(ContextNonLocalRequest) returns (ContextResponse);
+
+    // cleans up  resources; checks for deleted resources;
+    // rpc clean_resources(CleanResourcesRequest) returns (google.protobuf.Empty);
+
+    // TODO: we need a way to update web resources; for local resources we check if the content has changed
+    // for web resources we probably shouldn't scrape every time the resource is accessed?
+}
+
+// Client configuration storage
+// This service isn't directly used by the chat service but is used by the client to store
+// configurations (e.g. model configurations, prompts, instructions, etc.)
+service ConfigurationService {
+
+    // get/save/delete the model configurations for a user
+    rpc get_model_configs(google.protobuf.Empty) returns (GetModelConfigsResponse);
+    rpc save_model_config(SaveModelConfigRequest) returns (UserModelConfig);
+    rpc delete_model_config(DeleteModelConfigRequest) returns (google.protobuf.Empty);
+
+    // get/save/delete user prompts
+    // rpc get_prompts(google.protobuf.Empty) returns (GetPromptsResponse);
+    // get/save/delete user contexts
+    // get/save/delete user info
+}
+
+message EventStreamRequest {
+    // could for example add TYPE field to filter events
+}
+
+message ServerEvent {
+    enum EventType {
+        UNKNOWN = 0;
+        SERVICE = 1;
+        CHAT = 2;
+    }
+    enum EventLevel {
+        INFO = 0;
+        WARNING = 1;
+        ERROR = 2;
+    }
+
+    EventType type = 1;
+    EventLevel level = 2;
+    google.protobuf.Timestamp timestamp = 3;
+    string message = 4;
+    map<string, string> metadata = 5;
+}
+
+enum Role {
+    SYSTEM = 0;
+    USER = 1;
+    ASSISTANT = 2;
+}
+
+// Represents a single message/input to the model
+message ChatMessage {
+    Role role = 1;        // Role of the message sender
+    string content = 2;   // The actual message content
+}
+
+message ModelParameters {
+    optional float temperature = 1;
+    optional int32 max_tokens = 2;
+    optional float top_p = 3;
+    optional string server_url = 4;  // Only for Local family models
+}
+
+// used to communicate which model(s) the user wants to use
+message ModelConfig {
+    string model_family = 1;
+    string model_name = 2;
+    ModelParameters model_parameters = 4;
+}
+
+message ChatRequest {
+    string conversation_id = 1;
+    // multiple model configs (via id) can be used to generate responses from multiple models
+    // if multiple configs/models are used then the responses will be interleaved
+    // and the user can look at the model_index field in the ChatStreamResponse to determine which model
+    // generated the response (0-based index in the same order as the model_configs field)
+    repeated ModelConfig model_configs = 2;
+    // new message(s) to pass to the model (do not pass the entire conversation history)
+    // the server tracks history
+    repeated ChatMessage messages = 3;
+    repeated Resource resources = 4;
+    // Instructions passed to the server to guide response handling
+    // These are not part of the conversation but rather inform how the LLM
+    // should generate responses (e.g., "be concise", "focus on code"). The server will decide
+    // how to inject these instructions into the messages/prompt.
+    // The server will not include instructions as part of the conversation history. 
+    repeated string instructions = 5;
+    // metadata dictionary to track additional information that will get captured in history
+    map<string, string> metadata = 6;
+}
+
+message ChatStreamResponse {
+    message Chunk {
+        string content = 1;
+        float logprob = 2;
+    }
+    message Summary {
+        int32 input_tokens = 1;
+        int32 output_tokens = 2;
+        double input_cost = 3;
+        double output_cost = 4;
+        double duration_seconds = 5;
+    }
+    message ChatError {
+        string error_message = 1;
+        int32 error_code = 2;
+    }
+
+    string conversation_id = 1;
+    oneof response_type {
+        Chunk chunk = 2;
+        Summary summary = 3;
+        ChatError error = 4;
+    }
+    int32 model_index = 5;
+    string entry_id = 6;
+    string request_entry_id = 7;
+}
+
+// Information about models that are supported by the service
+message ModelInfo {
+    string family = 1;  // e.g. 'OpenAI'
+    string name = 2;  // e.g. 'gpt-4o-mini'
+    string display_name = 3;
+    optional int32 context_window = 4;
+    optional int32 output_token_limit = 5;
+    optional double cost_per_input_token = 6;
+    optional double cost_per_output_token = 7;
+}
+
+message GetSupportedModelsResponse {
+
+    repeated ModelInfo models = 1;
+}
+
+// used to store and retrieve model configurations for a user
+message UserModelConfig {
+    // config_id is optional because it is generated by the server and won't be passed in by the
+    // user for new configs
+    optional string config_id = 1;
+    string config_name = 2;  // display name for the config
+    ModelConfig config = 3;
+}
+
+message GetModelConfigsResponse {
+    repeated UserModelConfig configs = 1; 
+}
+
+message SaveModelConfigRequest {
+    UserModelConfig config = 1;
+}
+
+message DeleteModelConfigRequest {
+    string config_id = 1;
+}
+
+// represents the response from a single chat model; this message is not returned as part of the
+// streaming but is used to represent the history of the conversation
+message ChatModelResponse {
+
+    ChatMessage message = 1;
+    ModelConfig config_snapshot = 2;
+    int32 model_index = 3;
+}
+
+message MultiChatModelResponse {
+    repeated ChatModelResponse responses = 1;
+    google.protobuf.Int32Value selected_model_index = 2;
+    
+}
+
+message ConversationEntry {
+    // we need a way to uniquely identify entries so we can delete/edit/etc.
+    string entry_id = 1;
+    oneof message {
+        ChatMessage chat_message = 2;
+        ChatModelResponse single_model_response = 3;
+        MultiChatModelResponse multi_model_response = 4;
+    }
+    google.protobuf.Timestamp timestamp = 5;
+}
+
+message Conversation {
+    string conversation_id = 1;
+    repeated ConversationEntry entries = 2;
+}
+
+message GetHistoryResponse {
+    repeated Conversation conversations = 1;
+}
+
+message DeleteConversationRequest {
+    string conversation_id = 1;
+}
+
+message TruncateConversationRequest {
+    string conversation_id = 1;
+    string entry_id = 2;  // references ConversationEntry.entry_id
+}
+
+message BranchConversationRequest {
+    string conversation_id = 1;
+    string entry_id = 2;
+    optional int32 model_index = 3;
+}
+
+message BranchConversationResponse {
+    string new_conversation_id = 1;
+}
+
+message MultiResponseSelectRequest {
+    string conversation_id = 1;
+    string entry_id = 2;
+    int32 selected_model_index = 3;
+}
+
+///////////////////////////
+// Context Service Messages
+///////////////////////////
+enum ResourceType {
+    FILE = 0;
+    DIRECTORY = 1;
+    WEBPAGE = 2;
+}
+message AddResourceRequest {
+    string path = 1;
+    ResourceType type = 2;
+}
+
+message GetResourceRequest {
+    string path = 1;
+    ResourceType type = 2;
+}
+
+message GetResourceResponse {
+    string path = 1;
+    ResourceType type = 2;
+    string content = 3;
+    string last_accessed = 4;
+    string last_modified = 5;
+}
+
+message Resource {
+    string path = 1;
+    ResourceType type = 2;
+    // Resources can have different types of context strategies
+    // oneof context_strategy {
+    //     ContextTypeRAG rag = 3;
+    //     ContextTypeFullText full_text = 4;
+    // }
+}
+
+message ContextRequest {
+    repeated Resource resources = 1;
+    optional string rag_query = 2;
+    optional float rag_similarity_threshold = 3;
+    optional int32 rag_max_k = 4;
+    optional int32 max_chars = 5;
+    // the overall context strategy across all resources
+    // Overrides the context_strategy in Resource???
+    // oneof context_strategy {
+    //     ContextTypeRAG rag = 2;
+    //     ContextTypeFullText full_text = 3;
+    //     ContextTypeCodeBase code_base = 4;
+    // }
+}
+
+message ContextResponse {
+    string context = 1;
+    // future fields can return metadata about what context was constructed (e.g. which documents in rag)
+}
+
+// message ContextTypeRAG {
+//     // if the content from all resources is within chars_threshold, then we will use the full content 
+//     google.protobuf.Int32Value chars_threshold = 1;
+//     google.protobuf.Int32Value top_k = 2;
+//     google.protobuf.FloatValue similarity_threshold = 3;
+// }
+
+// message ContextTypeFullText {
+//     google.protobuf.Int32Value max_chars = 1;
+//     // true if we want to include the beginning of text up to the max_chars (if max_chars is specified)
+//     // false if we want to include the text the end of the text up to the max_chars
+//     bool include_beginning = 2;
+// }

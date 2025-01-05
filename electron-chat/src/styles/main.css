@@ -1,0 +1,1927 @@
+@import url('https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github.min.css');
+
+/* Reset defaults */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
+}
+
+body { 
+    background: #eaeaea;
+    color: #333;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto;
+    display: flex;
+}
+
+/* Sidebar Styles */
+#sidebar {
+    display: flex;
+    background: #f5f5f5;
+    transition: width 0.3s ease;
+    border-right: 1px solid #ddd;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.content-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+#models-list,
+#contexts-list,
+#prompts-list,
+#instructions-list,
+#history-list {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.content-header h3 {
+    margin: 0;
+    padding: 0;
+}
+
+.header-add-button {
+    all: unset;
+    background: none;
+    border: none;
+    color: #1976d2;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.header-add-button:hover {
+    background: #dddddd;
+}
+
+.header-delete-button {
+    all: unset;
+    background: none;
+    border: none;
+    color: #d32f2f;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+}
+
+.header-delete-button:hover {
+    background: #dddddd;
+}
+
+#resize-handle {
+    width: 4px;
+    cursor: col-resize;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background: transparent;
+    transition: background 0.2s;
+    z-index: 1000; /* Add this to ensure handle stays on top */
+}
+
+#resize-handle:hover {
+    background: #1976d2;
+}
+
+/* Remove transition when resizing */
+#sidebar.resizing {
+    transition: none;
+}
+
+#sidebar.collapsed {
+    width: 48px;
+}
+
+#sidebar.expanded {
+    width: 400px;
+}
+
+#icon-bar {
+    width: 48px;
+    background: #dddddd;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 10px;
+    border-right: 1px solid #ddd;
+}
+
+.sidebar-icon {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #666666;
+    transition: color 0.2s;
+}
+
+.sidebar-icon:hover {
+    color: #333333;
+}
+
+.sidebar-icon.active {
+    color: #1976d2;
+    border-left: 2px solid #1976d2;
+    background: #e3f2fd;
+}
+
+#sidebar-content {
+    flex: 1;
+    overflow: hidden;
+    display: none;
+    padding: 10px;
+    position: relative;
+}
+
+#sidebar-content.has-scrollbar {
+    padding-right: 14px;
+}
+
+#contexts-content.has-scrollbar {
+    padding-right: 5px;
+}
+
+#sidebar.expanded #sidebar-content {
+    display: block;
+}
+
+.icon-tooltip {
+    position: absolute;
+    left: 50px;
+    background: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    display: none;
+    white-space: nowrap;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.sidebar-icon:hover .icon-tooltip {
+    display: block;
+}
+
+#sidebar.collapsed .icon-tooltip {
+    display: none;
+}
+
+#toggle-sidebar {
+    position: absolute;
+    bottom: 10px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #666666;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+#toggle-sidebar:hover {
+    color: #333333;
+}
+
+/* Main Content Container */
+#main-content {
+    flex: 1;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#chat {
+    flex: 1;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 20px 20px 0px 20px;
+    margin-bottom: 0px;
+    border-radius: 5px;
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    color: #333;
+}
+
+.empty-state-instructions {
+    width: 100%;
+    max-width: 800px;
+    margin: 5px 5px 20px 5px;
+    color: #434343;
+    padding: 30px;
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    font-size: 14px;
+    line-height: 1.6;
+    /* veritical scroll bar */
+    overflow-y: auto;
+    height: calc(100% - 40px);
+}
+
+.empty-state-instructions h1 {
+    font-size: 28px;
+    margin-bottom: 20px;
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.empty-state-instructions h2 {
+    font-size: 20px;
+    margin-top: 30px;
+    margin-bottom: 12px;
+    color: #34495e;
+    font-weight: 500;
+}
+
+.empty-state-instructions p {
+    margin: 16px 0;
+}
+
+.empty-state-instructions ul {
+    list-style-type: circle;
+    margin: 16px 0;
+    padding-left: 24px;
+}
+
+.empty-state-instructions li {
+    margin: 12px 0;
+}
+
+.empty-state-instructions code {
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    color: #e83e8c;
+}
+
+.empty-state-instructions hr {
+    margin: 30px 0;
+    border: none;
+    border-top: 1px solid #eee;
+}
+
+/* Bottom Area Container */
+.bottom-container {
+    display: flex;
+    gap: 10px;
+    height: fit-content;
+    min-height: fit-content;
+    flex-shrink: 0;
+    border-top: 1px solid #eee;
+    padding-top: 5px;
+}
+
+/* Input Area */
+.input-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#message-input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background: #ffffff;
+    color: #333;
+    resize: none;
+    height: 150px !important;
+    font-family: inherit;
+    font-size: inherit;
+    font-size: 13px;
+    line-height: 1.2;
+}
+
+.button-container {
+    display: flex;
+    gap: 10px;
+}
+
+/* Token Summary */
+.token-summary {
+    width: 175;
+    padding: 15px;
+    background: #ffffff;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    font-size: 0.9em;
+    line-height: 1;
+}
+
+.token-summary h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #555;
+}
+
+.token-summary div {
+    margin-bottom: 8px;
+    color: #333;
+}
+
+.message {
+    margin: 15px 0;
+    padding: 15px 20px;
+    border-radius: 5px;
+    max-width: 100%;
+    white-space: pre-wrap;
+    font-size: 13px;
+    line-height: 1.3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #2c3e50;
+}
+
+.message.user {
+    border-left: 3px solid #dddddd;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.message.assistant {
+    position: relative;  /* Add this */
+    overflow-x: auto;
+    width: 100%;
+    min-width: 0;
+    padding-bottom: 30px;
+    border-left: 3px solid #1976d2;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.message-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: 1.5rem;
+    margin: 15px 0;
+    width: 100%;
+    overflow-x: auto;
+}
+
+.message-content {
+    overflow-wrap: break-word;
+    min-width: 0; /* Allow content to shrink */
+    word-break: break-word; /* Handle long words */
+}
+
+.model-label {
+    font-size: 0.85rem;
+    color: #555;
+    margin-bottom: 10px;
+    font-weight: 500;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+    text-align: center;
+}
+
+.message p {
+    margin: 0 0 1px; /* Reduce the bottom margin to 8px for better spacing */
+}
+
+.message ul, .message ol {
+    margin: 0; /* Remove default list margins */
+    padding-left: 20px; /* Indent all lists inside messages */
+    line-height: 0;
+}
+
+.message ul ul, .message ol ol {
+    padding-left: 18px; /* Further indent nested lists */
+    line-height: 0.5;
+}
+
+.message li {
+    margin-bottom: 0px; /* Space between each list item */
+    padding: 0; /* Ensure no extra padding on list items */
+    line-height: 1.2;
+}
+
+/* Buttons */
+button {
+    all: unset; /* Reset all properties */
+    box-sizing: border-box;
+    background: #1976d2;
+    color: white;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+    font-size: 14px;
+}
+
+button:hover {
+    background: #1565c0;
+}
+
+/* Stack buttons (Send/Cancel) */
+.button-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100px;
+    flex-shrink: 0;
+}
+
+.button-stack button {
+    height: 34px;
+    padding: 0 16px;
+    display: inline-block;
+    width: 100%;
+}
+
+#cancel-button {
+    background: #d32f2f;
+}
+
+#cancel-button:hover {
+    background: #b71c1c;
+}
+
+#history-list {
+    margin-top: 15px;  /* Match other list margins */
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.history-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background: #ffffff;
+    cursor: pointer;  /* Keeping this as it improves UX */
+    height: 52px;  /* Keeping fixed height for consistency */
+}
+
+.history-item:hover {
+    background: #f9f9f9;
+}
+
+.history-item.selected {
+    background: #e3f2fd; /* Highlight selected */
+    border: 1px solid #90caf9;
+}
+
+.history-item-content {
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: normal;
+    margin-right: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.delete-button {
+    background: none !important;
+    border: none;
+    color: #d32f2f;
+    cursor: pointer;
+    max-width: 20px !important; /* Force maximum width */
+    min-width: 20px !important; /* Force minimum width */
+    width: 20px !important; /* Force exact width */
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    flex: 0 0 20px !important; /* Shorthand for flex-grow: 0, flex-shrink: 0, flex-basis: 40px */
+}
+
+.delete-button:hover {
+    color: #b71c1c;
+}
+
+.delete-button svg {
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+    fill: currentColor;
+}
+
+#models-content {
+    font-family: inherit;
+    color: #333;
+}
+
+#models-content label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+#models-content select,
+#models-content input[type="url"] {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+#models-content input[type="range"] {
+    width: 100%;
+}
+
+#models-content #temperature-value {
+    /* font-weight: bold; */
+    margin-left: 10px;
+}
+
+.parameter-container {
+    margin-top: 20px;
+}
+
+pre {
+    position: relative;
+    background: #f6f8fa;
+    border: 1px solid #eaecef;
+    border-radius: 6px;
+    padding: 16px;
+    margin: 10px 0;
+    overflow-x: auto;
+}
+
+code {
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    background: #f8f8f8;
+    padding: 2px 4px;
+    border-radius: 3px;
+}
+
+.message.user pre, .message.assistant pre {
+    background: inherit;
+    color: inherit;
+}
+
+.truncate-button {
+    background: none !important;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 4px;
+    margin-bottom: -10px;
+    margin-left: -15px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+}
+
+.truncate-button:hover {
+    background: rgba(0,0,0,0.08) !important;
+}
+
+.branch-button {
+    position: absolute;
+    bottom: 6px;  /* Match copy-button--message positioning */
+    left: 34px;   /* Position to the right of copy button */
+    background: none !important;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 20px !important;
+    width: 28px;
+    height: 28px;
+    transition: color 0.2s;
+}
+
+.branch-button:hover {
+    background: rgba(0,0,0,0.08) !important;
+}
+
+.branch-button svg {
+    width: 16px;
+    height: 16px;
+    stroke: #666;
+    transition: stroke 0.2s;
+}
+
+/* Only show branch button on assistant messages */
+.message.assistant .branch-button {
+    display: flex;
+}
+
+.message.user .branch-button {
+    display: none;
+}
+
+.message.assistant.selected {
+    border-left: 3px solid #4caf50 !important;  /* Green border for selected message */
+}
+
+.select-button {
+    position: absolute;
+    bottom: 6px;  
+    left: 62px;   /* Position after copy and branch buttons */
+    background: none !important;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 20px !important;
+    width: 28px;
+    height: 28px;
+    transition: color 0.2s;
+}
+
+.select-button:hover {
+    background: rgba(0,0,0,0.08) !important;
+}
+
+/* Color the SVG green when selected */
+.select-button svg {
+    stroke: #666;  /* Default color */
+    transition: stroke 0.2s;
+}
+
+.select-button.selected svg {
+    stroke: #4caf50;  /* Green when selected */
+}
+
+.message.assistant .branch-button,
+.message.assistant .select-button {
+    display: none;  /* Hide by default */
+}
+
+.message.assistant.response-complete .branch-button,
+.message.assistant.response-complete .select-button {
+    display: flex;  /* Show when response is complete */
+}
+
+/* Copy Button Styles */
+.copy-button {
+    position: absolute;
+    background: none !important; /* Override default button background */
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 20px !important;
+    width: 28px;
+    height: 28px;
+    transition: color 0.2s;
+}
+
+.copy-button svg {
+    fill: #666;
+    transition: fill 0.2s;
+}
+
+/* .copy-button:hover svg {
+    fill: #333333;
+} */
+
+.copy-button:hover {
+    background: rgba(0,0,0,0.08) !important;
+}
+
+.copy-button.copied {
+    background: #1976d2 !important;
+}
+
+.copy-button--code {
+    top: 4px;
+    right: 4px;
+}
+
+.copy-button--message {
+    position: absolute;
+    bottom: 6px;
+    left: 6px;
+    background: none !important;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 20px !important;
+}
+
+.message-container + .message-container {
+    margin-top: 25px;
+}
+
+/* Prompt Styles */
+.use-button {
+    background: none !important;
+    border: none;
+    color: #4caf50;  /* Green color */
+    cursor: pointer;
+    width: 30px !important;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    flex: 0 0 30px !important;
+}
+
+.use-button:hover {
+    color: #45a049;  /* Darker green on hover */
+}
+
+.use-button svg {
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+    stroke: currentColor;
+    fill: currentColor;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.prompt-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.prompt-title {
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #333;
+}
+
+.prompt-content-preview {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #666;
+}
+
+/* Tooltip on hover for both title and content */
+.prompt-title:hover,
+.prompt-content-preview:hover {
+    position: relative;
+}
+
+.prompt-title:hover::after,
+.prompt-content-preview:hover::after {
+    content: attr(title);
+    position: absolute;
+    left: 0;
+    top: -24px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+}
+
+/* Resource Styles */
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+#save-context, #save-resource {
+    background: #1976d2;
+    color: white;
+    border-radius: 5px;
+    padding: 8px 16px;
+    height: 36px;
+    cursor: pointer;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#cancel-context, #cancel-resource {
+    background: #d32f2f;
+    color: white;
+    border-radius: 5px;
+    padding: 8px 16px;
+    height: 36px;
+    cursor: pointer;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#save-context:hover, #save-resource:hover {
+    background: #1565c0;
+}
+
+#cancel-context:hover, #cancel-resource:hover {
+    background: #b71c1c;
+}
+
+.resource-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 10px;
+    margin-bottom: 5px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    background: #ffffff;
+}
+
+.resource-icon {
+    margin-right: 10px;
+    color: #666;
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+
+.icon-tooltip {
+    position: absolute;
+    left: 50px;
+    background: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    display: none;
+    white-space: nowrap;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.resource-icon:hover .icon-tooltip {
+    display: block;
+}
+
+.resource-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.resource-icon-container {
+    position: relative;
+    margin-right: 10px;
+    color: #666;
+    flex-shrink: 0;
+    padding-top: 2px;
+    display: flex;
+    align-items: center;
+}
+
+.resource-icon-container:hover .icon-tooltip {
+    display: block;
+    left: 24px; /* Position tooltip to the right of icon */
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.resource-name {
+    font-size: 12px;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #333;
+}
+
+.resource-path {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #666;
+}
+
+/* Tooltip on hover for both name and path */
+.resource-name:hover,
+.resource-path:hover {
+    position: relative;
+}
+
+.resource-name:hover::after,
+.resource-path:hover::after {
+    content: attr(title);
+    position: absolute;
+    left: 0;
+    top: -24px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 1000;
+}
+
+/* File Attachement Drag and Drop */
+#file-attachments {
+    margin-top: 0px;
+}
+
+.file-attachment {
+    display: inline-flex;
+    align-items: center;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 12px;
+    height: 24px;
+    line-height: 1.2;
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 8px;
+    font-size: 12px;
+    line-height: 1.2;
+    flex: 1;
+    padding: 2px 0;
+}
+
+.remove-file {
+    background: none !important;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 16px !important;
+    width: 16px;
+    height: 16px;
+}
+
+.remove-file:hover {
+    color: #d32f2f;
+    background: none !important;
+}
+
+.remove-file svg {
+    width: 16px;
+    height: 16px;
+}
+
+.context-item {
+    flex-direction: column;
+    width: 100%;
+    padding: 10px 5px 10px 10px;  /* Reduce right padding */
+    margin-bottom: 0px;
+    box-sizing: border-box;
+    cursor: pointer;
+    background-color: #ffffff;
+    transition: background-color 0.2s;
+}
+
+.context-header {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    width: 100%;
+    min-height: 100%; /* Add this */
+    margin: -10px; /* Negative margin to counter parent padding */
+    padding: 10px 5px 10px 10px; /* Add back padding that was removed by negative margin; Reduce right padding */
+    box-sizing: border-box;
+    gap: 0px;
+}
+
+.context-header .use-button {
+    background: none !important;
+    border: none;
+    color: #4caf50;
+    cursor: pointer;
+    width: 30px !important;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin: 0;
+    flex: 0 0 30px !important;
+}
+
+.context-header .use-button:hover {
+    color: #45a049;
+}
+
+.context-header .use-button svg {
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+    stroke: currentColor;
+    fill: currentColor;
+}
+
+.context-content {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+}
+
+.context-item:not(.expanded):hover {
+    background-color: #f5f5f5;
+}
+
+.context-config {
+    margin: 10px -10px -10px; /* Negative margin to counter parent padding */
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    padding: 10px;
+    border-top: 1px solid #ddd;
+    background-color: #ffffff;
+    width: calc(100% + 15px); /* Compensate for parent padding */
+}
+
+
+.custom-instructions {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-top: 10px;
+    margin-bottom: 2px;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box; /* Ensure padding is included in width */
+}
+
+.context-item.expanded {
+    border: 1px solid #90caf9;
+    background-color: #e3f2fd;
+    height: auto;
+}
+
+.common-config {
+    padding: 0 10px; /* Add padding to the content container */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.resources-add-container {
+    display: flex;
+    gap: 0px;
+    margin-top: 10px;
+}
+
+.context-resource-button {
+    all: unset;
+    background: none !important;
+    border: none;
+    color: #666666;  /* Blue color to match other header buttons */
+    cursor: pointer;
+    padding: 0px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    flex: 0 0 28px;
+}
+
+.context-resource-clear:hover {
+    color: #d32f2f;
+}
+
+.context-resource-add:hover {
+    color: #1976d2;
+}
+
+.context-resource-button svg {
+    stroke: currentColor;
+    stroke-width: 2;
+}
+
+.resource-drop-zone {
+    flex: 1;
+    border: 2px dashed #ccc;
+    border-radius: 5px;
+    padding: 8px;
+    margin-right: 6px;
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.resource-drop-zone.drag-over {
+    background-color: #e3f2fd;
+    border-color: #1976d2;
+}
+
+.resource-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.dialog-content {
+    background: white;
+    padding: 20px;
+    border-radius: 5px;
+    width: 400px;
+    max-width: 90%;
+}
+
+.config-section {
+    margin-bottom: 10px;
+}
+
+.config-section h3 {
+    margin-bottom: 0px;
+    font-size: 14px;
+    color: #333;
+}
+
+/* .resources-section {
+    margin-top: 20px;
+} */
+
+.resources-list {
+    display: flex;
+    flex-direction: column;
+    margin-top: 10px;
+    gap: 0px;
+}
+
+.resources-list .resource-item {
+    margin-bottom: 5px;
+    padding: 5px;
+}
+
+.resources-list .resource-item .remove-file {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;  /* Take full height of parent */
+    padding: 0;
+    margin: 0;
+    align-self: center; /* Center vertically in flex parent */
+}
+
+/* Make the instruction item consistent with file attachment */
+.attachment-item {
+    display: inline-flex; /* Change to inline-flex */
+    align-items: center;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 12px;
+    line-height: 1;
+    height: 22px;
+    cursor: pointer;
+    white-space: nowrap; /* Keep text on one line */
+    margin: 1px;
+}
+
+.attachment-item span {
+    margin-right: 8px; /* Space between text and icon */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+/* Use the same styles for the remove icon */
+.attachment-item .remove-file {
+    background: none;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0; /* Remove unnecessary padding */
+    margin: 0;
+    min-width: 20px;
+    width: 20px;
+    height: 20px;
+}
+
+.attachment-item .remove-file:hover {
+    color: #d32f2f; /* Same hover color */
+}
+
+/* Different colors for contexts and instructions */
+.attachment-item[data-type="context"] {
+    background: #e3f2fd; /* Light blue background */
+    border-color: #90caf9;
+}
+
+.attachment-item[data-type="context"]:hover {
+    background: #bbdefb;
+}
+
+.attachment-item[data-type="instruction"] {
+    background: #e8f5e9; /* Light green background */
+    border-color: #a5d6a7;
+}
+
+.attachment-item[data-type="instruction"]:hover {
+    background: #c8e6c9;
+}
+
+/* Add small badge to indicate type */
+.attachment-item::before {
+    content: attr(data-type-letter);
+    font-size: 10px;
+    text-transform: capitalize;
+    padding: 2px 4px;
+    border-radius: 3px;
+    margin-right: 6px;
+}
+
+.attachment-item[data-type="context"]::before {
+    background: #90caf9;
+    color: #1565c0;
+}
+
+.attachment-item[data-type="instruction"]::before {
+    background: #a5d6a7;
+    color: #2e7d32;
+}
+
+.controls-container {
+    display: flex;
+    gap: 5px;
+    margin-top: 5px;
+}
+
+.attachment-stack {
+    flex: 1;
+    display: flex;
+    gap: 5px;
+    min-height: 0;
+}
+
+.attachments-section {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 4px;
+    gap: 4px;
+    min-height: 36px;
+    flex: 1;
+}
+
+#search-container {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 5px);
+    left: 0;
+    right: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    z-index: 9999;
+}
+
+#search-results {
+    display: block;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 5px;
+}
+
+#search-box {
+    width: 100%;
+    padding: 8px;
+    border: none;
+    border-top: 1px solid #eee;
+    border-radius: 0 0 4px 4px;
+}
+
+#attached-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    flex: 1;
+}
+
+.attachment-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    float: left;
+}
+
+.files-section {
+    width: 30%;
+    display: flex;
+    flex-direction: column;
+    min-height: 36px;  /* Match attachments section */
+}
+
+#drop-zone {
+    flex: 1;
+    border: 2px dashed #ccc;
+    border-radius: 5px;
+    padding: 8px;
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+}
+
+#drop-zone.drag-over {
+    background-color: #e3f2fd;
+    border-color: #1976d2;
+}
+
+#attached-files {
+    margin-top: 3px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1px;
+}
+
+#events-content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+#events-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    min-height: 0;
+    max-height: calc(100% - 110px); /* Account for header and clear button */
+}
+
+#events-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+#events-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#events-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+#events-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+.event-item {
+    margin-bottom: 10px;
+    padding: 8px 10px;
+    border-radius: 5px;
+    background: #ffffff;
+    border: 1px solid #ddd;
+    border-left-width: 4px;
+    font-size: 0.9em;
+}
+
+.event-item.info {
+    border-left-color: #1976d2;
+}
+
+.event-item.warning {
+    border-left-color: #ff9800;
+}
+
+.event-item.error {
+    border-left-color: #d32f2f;
+}
+
+.event-header {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 4px;
+    font-size: 0.85em;
+    color: #666;
+}
+
+.event-time {
+    color: #888;
+}
+
+.event-type {
+    font-weight: bold;
+}
+
+.event-level {
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.85em;
+    text-transform: lowercase;
+}
+
+.event-level.info {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.event-level.warning {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+
+.event-level.error {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.event-message {
+    margin: 4px 0;
+    line-height: 1.4;
+}
+
+.event-metadata {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px solid #eee;
+    font-size: 0.85em;
+    color: #666;
+}
+
+.event-metadata div {
+    display: flex;
+    gap: 8px;
+}
+
+.event-metadata span {
+    font-weight: bold;
+}
+
+/* Model config item styles - following context-item pattern */
+.model-config-section {
+    margin: 10px -10px -10px; /* Negative margin to counter parent padding */
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    padding: 10px;
+    border-top: 1px solid #ddd;
+    background-color: #ffffff;
+    width: calc(100% + 15px); /* Compensate for parent padding */
+}
+
+.model-config-section h3 {
+    margin: 0;
+    padding: 10px;
+    font-size: 14px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.model-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.temperature-range {
+    width: 100%;
+    padding: 0px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-top: 10px;
+}
+
+.model-config-item {
+    flex-direction: column;
+    width: 100%;
+    padding: 10px 5px 10px 10px;
+    margin-bottom: 0px;
+    box-sizing: border-box;
+    cursor: pointer;
+    background-color: #ffffff;
+    transition: background-color 0.2s;
+}
+
+.save-config-button {
+    margin-top: 10px;
+}
+
+.model-config-header {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    width: 100%;
+    min-height: 100%; /* Add this */
+    margin: -10px; /* Negative margin to counter parent padding */
+    padding: 10px 5px 10px 10px; /* Add back padding that was removed by negative margin; Reduce right padding */
+    box-sizing: border-box;
+    gap: 0px;
+}
+
+.model-config-content {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+}
+
+.model-config-item:not(.expanded):hover {
+    background-color: #f5f5f5;
+}
+
+.model-config-item.expanded {
+    border: 1px solid #90caf9;
+    background-color: #e3f2fd;
+    height: auto;
+}
+
+/* Config section styles */
+.model-config-item .context-config {
+    margin: 10px -10px -10px;
+    border-top: 1px solid #ddd;
+    padding: 10px;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    background-color: #ffffff;
+    width: calc(100% + 15px);
+}
+
+/* Attachment styles */
+.attachment-item[data-type="model-config"] {
+    background: #f3e5f5;
+    border-color: #ce93d8;
+}
+
+.attachment-item[data-type="model-config"]:hover {
+    background: #e1bee7;
+}
+
+.attachment-item[data-type="model-config"]::before {
+    background: #ce93d8;
+    color: #6a1b9a;
+}
+
+.add-attachment-button {
+    background: none !important;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    order: -1;
+}
+
+.add-attachment-button:hover {
+    background: rgba(0,0,0,0.05) !important;
+}
+
+.clear-attachments-button {
+    background: none !important;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+}
+
+.clear-attachments-button:hover {
+    background: rgba(0,0,0,0.05) !important;
+}
+
+
+#add-model-config-form {
+    background: white;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    margin: 10px;
+    overflow: hidden; /* For border radius with header */
+}
+
+#add-model-config-form h2 {
+    margin: 0;
+    padding: 15px;
+    background: #1976d2;
+    color: white;
+    font-size: 18px;
+    text-align: center;
+}
+
+#add-model-config-form .form-group {
+    padding: 15px 15px;
+    margin-bottom: 0px;
+}
+
+#add-model-config-form .form-group:last-child {
+    padding-bottom: 20px;
+}
+
+#add-model-config-form label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+#add-model-config-form input,
+#add-model-config-form select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+#add-model-config-form .button-group {
+    padding: 15px 20px;
+    background: #f5f5f5;
+    border-top: 1px solid #ddd;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 0px;
+}
+
+#save-model-config,
+#cancel-model-config {
+    flex: 1;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    color: white;
+}
+
+#save-model-config {
+    background: #1976d2;
+}
+
+#save-model-config:hover {
+    background: #1565c0;
+}
+
+#cancel-model-config {
+    background: #f44336;
+}
+
+#cancel-model-config:hover {
+    background: #d32f2f;
+}
+
+/* Temperature slider styling */
+#temperature-slider {
+    width: 100%;
+    margin: 0px;
+}
+
+#temperature-value {
+    display: block;
+    color: #666;
+    font-size: 14px;
+    margin-top: 0px;
+}
+
+
+#add-context-form {
+    background: white;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+    margin: 10px;
+    overflow: hidden;
+}
+
+#add-context-form .form-group {
+    padding: 15px 15px;
+    margin-bottom: 0px;
+}
+
+#add-context-form .form-group:last-child {
+    padding-bottom: 20px;
+}
+
+#add-context-form label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #333;
+}
+
+#add-context-form input,
+#add-context-form select {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+#add-context-form .button-group {
+    padding: 15px 20px;
+    background: #f5f5f5;
+    border-top: 1px solid #ddd;
+    display: flex;
+    gap: 10px;
+    margin-bottom: 0px;
+}
+
+#save-context,
+#cancel-context {
+    flex: 1;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    color: white;
+}
+
+#save-context {
+    background: #1976d2;
+}
+
+#save-context:hover {
+    background: #1565c0;
+}
+
+#cancel-context {
+    background: #f44336;
+}
+
+#cancel-context:hover {
+    background: #d32f2f;
+}
+
+#add-model-config-form label,
+#add-context-form label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+    color: #333;
+    font-size: 13px;  /* Reduced from default size */
+}
+
+#add-model-config-form input, #add-model-config-form select {
+    margin-bottom: 0px;
+}
+/* Prevent text selection on labels/static text */
+#sidebar-content h3,
+.sidebar-icon .icon-tooltip,
+.button,
+.history-item-content,
+.resource-name,
+.resource-path,
+.prompt-title,
+.prompt-content-preview,
+.attachment-item span,
+.file-name,
+.config-section h3,
+#models-content label,
+.form-group label,
+.resource-drop-zone span,
+.resource-icon-container .icon-tooltip {
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Scrollable content areas */
+#models-content,
+#contexts-content,
+#prompts-content,
+#instructions-content,
+#history-content {
+    height: 100%;
+    overflow-y: auto;
+    padding: 10px;
+}
+
+/* Consistent scrollbar styling */
+#models-content::-webkit-scrollbar,
+#contexts-content::-webkit-scrollbar,
+#prompts-content::-webkit-scrollbar,
+#instructions-content::-webkit-scrollbar,
+#history-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+#models-content::-webkit-scrollbar-track,
+#contexts-content::-webkit-scrollbar-track,
+#prompts-content::-webkit-scrollbar-track,
+#instructions-content::-webkit-scrollbar-track,
+#history-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#models-content::-webkit-scrollbar-thumb,
+#contexts-content::-webkit-scrollbar-thumb,
+#prompts-content::-webkit-scrollbar-thumb,
+#instructions-content::-webkit-scrollbar-thumb,
+#history-content::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+#models-content::-webkit-scrollbar-thumb:hover,
+#contexts-content::-webkit-scrollbar-thumb:hover,
+#prompts-content::-webkit-scrollbar-thumb:hover,
+#instructions-content::-webkit-scrollbar-thumb:hover,
+#history-content::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
