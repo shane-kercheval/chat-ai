@@ -37,18 +37,27 @@ class ChatApp {
         });
     }
 
-    async waitForServer(attempts = 100, delay = 1000) {
-        for (let i = 0; i < attempts; i++) {
-            try {
-                // Try a simple gRPC call to test connection
-                await this.ipcService.getModelConfigs();
-                return true;
-            } catch (error) {
-                console.log(`Server not ready, attempt ${i + 1}/${attempts}`);
-                await new Promise(resolve => setTimeout(resolve, delay));
-            }
-        }
-        throw new Error('Server failed to start');
+    async waitForServer(retries = 100, delay = 1000) {
+        const net = require('net');
+        return new Promise((resolve, reject) => {
+            const client = new net.Socket();
+            let attemptCount = 0;
+            const tryConnect = () => {
+                client.connect(50051, '127.0.0.1', () => {
+                    client.destroy();
+                    resolve();
+                });
+            };
+            client.on('error', (err) => {
+                attemptCount++;
+                if (attemptCount < retries) {
+                    setTimeout(tryConnect, delay);
+                } else {
+                    reject(new Error('Server not available'));
+                }
+            });
+            tryConnect();
+        });
     }
 
     initializeServices() {

@@ -6,6 +6,9 @@
 build-env:
 	uv sync
 
+run: proto electron-proto
+	uv run python launch.py
+
 ####
 # Project
 ####
