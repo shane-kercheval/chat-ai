@@ -1,4 +1,14 @@
-# Using
+This project provides a client for interacting with LLMs (e.g. OpenAI, Claude, local models via LM Studio or other lamma.cpp-based services). It runs a gRPC inference and resource (e.g. file attachment) service.
+
+- Chat with several models within the same conversation.
+- "Attach" websites, local files, local directories
+    - changes to local files/directories automatically update in the resource service
+    - RAG is used when attached context is larger than specified threshold
+- Predefined prompts, instructions
+- Define "contexts" which are collections of attachments with optional instructions.
+- Combine multiple contexts, instructions in a single conversation; dynamically add/remove.
+
+# Running the Client/Server
 
 - add `.env` file with `OPENAI_API_KEY` and `ATHROPIC_API_KEY` keys/tokens.
 - run `make electron-setup`
