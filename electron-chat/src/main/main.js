@@ -18,7 +18,6 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../index.html'));
     setupIpcHandlers(mainWindow);
 
-    // Open the DevTools by default
     mainWindow.webContents.openDevTools();
 }
 

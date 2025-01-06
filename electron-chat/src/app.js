@@ -17,13 +17,38 @@ class ChatApp {
     constructor() {
         this.eventBus = AppEventBus.getInstance();
         this.initializeServices();
+        // Show loading immediately
+        UIManager.showLoading(document.body);
+        // Initialize stores but don't load data yet
         this.initializeStores();
-        // Listen for data loaded event before initializing components
-        this.chatStore.on('dataLoaded', () => {
+        // Wait for server before loading any data
+        this.waitForServer().then(() => {
+            // Only try to load data after server is confirmed ready
+            return this.chatStore.loadInitialData();
+        }).then(() => {
+            UIManager.hideLoading(document.body);
             this.initializeComponents();
             this.setupKeyboardShortcuts();
             this.setupEventHandlers();
+        }).catch(error => {
+            console.error('Startup error:', error);
+            UIManager.hideLoading(document.body);
+            UIManager.showNotification('Failed to connect to server', 'error');
         });
+    }
+
+    async waitForServer(attempts = 100, delay = 1000) {
+        for (let i = 0; i < attempts; i++) {
+            try {
+                // Try a simple gRPC call to test connection
+                await this.ipcService.getModelConfigs();
+                return true;
+            } catch (error) {
+                console.log(`Server not ready, attempt ${i + 1}/${attempts}`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            }
+        }
+        throw new Error('Server failed to start');
     }
 
     initializeServices() {

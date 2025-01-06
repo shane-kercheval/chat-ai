@@ -20,7 +20,8 @@ export class ChatStore extends EventEmitter {
             outputCost: 0
         };
         this.setupIpcListeners();
-        this.loadInitialData();
+        // loadInitialData is now called from app.js after server is ready
+        // this.loadInitialData();
     }
 
     setupIpcListeners() {

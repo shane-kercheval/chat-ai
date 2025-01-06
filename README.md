@@ -1,6 +1,7 @@
 # Using
 
-- add .env file with `OPENAI_API_KEY`
+- add .env file with `OPENAI_API_KEY` and `ATHROPIC_API_KEY`.
+- run `make electron-setup`
 
 # Caveats / Gotchas
 
