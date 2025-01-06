@@ -48,7 +48,7 @@ class CompletionServiceConfig:
     initial_conversations: list[chat_pb2.Conversation] | None = None
     rag_similarity_threshold: float = 0.5
     rag_max_k: int = 20
-    max_chars: int = 100_000
+    max_chars: int = 200_000
 
 @dataclass
 class ContextServiceConfig:

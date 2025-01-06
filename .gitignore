@@ -185,6 +185,6 @@ lid.176.ftz
 !language_codes.csv
 
 .vscode
-electron-chat/node_modules
-electron-chat/proto
+client/node_modules
+client/proto
 data

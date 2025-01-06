@@ -16,7 +16,7 @@ run-server: proto
 	PYTHONPATH=$PYTHONPATH:.:./proto/generated uv run server/grpc_service.py
 
 run-app: electron-proto
-	cd electron-chat && npm start
+	cd client && npm start
 
 proto: clean-proto
 	uv run -m grpc_tools.protoc \
@@ -40,8 +40,8 @@ tests: linting unittests
 clean-proto:
 	rm -rf proto/generated/chat_pb2.py
 	rm -rf proto/generated/chat_pb2_grpc.py
-	rm -rf electron-chat/proto/generated/chat_pb.js
-	rm -rf electron-chat/proto/generated/chat_grpc.js
+	rm -rf client/proto/generated/chat_pb.js
+	rm -rf client/proto/generated/chat_grpc.js
 
 clean: clean-proto
 	rm -rf .venv
@@ -53,12 +53,12 @@ clean: clean-proto
 # Electron
 ####
 electron-setup: electron-clean
-	cd electron-chat && npm install
+	cd client && npm install
 
 electron-proto: proto
-	mkdir -p electron-chat/proto/generated
-	cp proto/chat.proto electron-chat/proto/
-	cd electron-chat && \
+	mkdir -p client/proto/generated
+	cp proto/chat.proto client/proto/
+	cd client && \
 		npx grpc_tools_node_protoc \
 		--js_out=import_style=commonjs,binary:./proto/generated \
 		--grpc_out=grpc_js:./proto/generated \
@@ -66,5 +66,5 @@ electron-proto: proto
 		./proto/chat.proto
 
 electron-clean:
-	rm -rf electron-chat/proto/generated/*
-	rm -f electron-chat/proto/chat.proto
+	rm -rf client/proto/generated/*
+	rm -f client/proto/chat.proto

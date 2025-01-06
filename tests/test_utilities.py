@@ -372,16 +372,16 @@ class TestDirectoryTree:
         with tempfile.TemporaryDirectory() as temp_dir:
             tmp_path = Path(temp_dir)
             # Create test directory structure
-            (tmp_path / 'electron-chat').mkdir()
-            (tmp_path / 'electron-chat/node_modules').mkdir()
-            (tmp_path / 'electron-chat/node_modules/@electron').mkdir(parents=True)
-            (tmp_path / 'electron-chat/node_modules/@electron/file.txt').touch()
-            (tmp_path / 'electron-chat/src').mkdir()
-            (tmp_path / 'electron-chat/src/main.ts').touch()
+            (tmp_path / 'client').mkdir()
+            (tmp_path / 'client/node_modules').mkdir()
+            (tmp_path / 'client/node_modules/@electron').mkdir(parents=True)
+            (tmp_path / 'client/node_modules/@electron/file.txt').touch()
+            (tmp_path / 'client/src').mkdir()
+            (tmp_path / 'client/src/main.ts').touch()
 
             # Create .gitignore
             async with aiofiles.open(tmp_path / '.gitignore', 'w') as f:
-                await f.write('electron-chat/node_modules\n')
+                await f.write('client/node_modules\n')
 
             tree = await generate_directory_tree(str(tmp_path))
 
