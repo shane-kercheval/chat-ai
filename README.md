@@ -111,6 +111,7 @@
 **Resources**
 
 - [ ] `Clear All Resources` button
+- [ ] If you pass in a directory doesn't have `.gitignore` (e.g. subdirectory of the project) then it will still probably include a bunch of non-hidden files/directories that are not wanted (e.g. `__pycache__`, etc.). We probably want to create a list of common files/directories/patterns to ignore even without `.gitignore` file.
 
 **Server**
 
