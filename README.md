@@ -2,6 +2,8 @@
 
 - add .env file with `OPENAI_API_KEY` and `ATHROPIC_API_KEY`.
 - run `make electron-setup`
+- run `make run`
+    - or start server with `make run-server` and start app with `make start-app`
 
 # Caveats / Gotchas
 
