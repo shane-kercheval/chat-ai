@@ -473,13 +473,11 @@ class ResourceManager:
 
         # Process documents that need similarity search
         if rag_resources:
-            logging.info("\n\n++++RAG_RESOURCES")
             if not (self._rag_scorer and query):
                 raise ValueError("RAG scorer and query must be provided for RAG strategy")
 
             # returns list of objects containing chunk/score
             search_results = self._rag_scorer.score(rag_resources, query)
-            # logging.info(f"SEARCH_RESULTS: {search_results}")
             # Group results by document
             results_by_doc = {}
             for result in search_results:
@@ -491,10 +489,6 @@ class ResourceManager:
             for doc_key, doc_results in results_by_doc.items():
                 # Filter chunks above threshold
                 above_threshold = [r for r in doc_results if r.score >= rag_similarity_threshold]
-                logging.info(f"RAG_MAX_K: {rag_max_k}")
-                logging.info(f"ABOVE_THRESHOLD: {above_threshold}")
-
-
                 # Apply rag_max_k if specified
                 if rag_max_k is not None and above_threshold:
                     # Sort by score and take top k
