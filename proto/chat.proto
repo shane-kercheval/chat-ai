@@ -106,6 +106,12 @@ message ModelConfig {
     ModelParameters model_parameters = 4;
 }
 
+enum ContextStrategy {
+    FULL_TEXT = 0;
+    RAG = 1;
+    AUTO = 2;
+}
+
 message ChatRequest {
     string conversation_id = 1;
     // multiple model configs (via id) can be used to generate responses from multiple models
@@ -117,14 +123,15 @@ message ChatRequest {
     // the server tracks history
     repeated ChatMessage messages = 3;
     repeated Resource resources = 4;
+    optional ContextStrategy context_strategy = 5;
     // Instructions passed to the server to guide response handling
     // These are not part of the conversation but rather inform how the LLM
     // should generate responses (e.g., "be concise", "focus on code"). The server will decide
     // how to inject these instructions into the messages/prompt.
     // The server will not include instructions as part of the conversation history. 
-    repeated string instructions = 5;
+    repeated string instructions = 6;
     // metadata dictionary to track additional information that will get captured in history
-    map<string, string> metadata = 6;
+    map<string, string> metadata = 7;
 }
 
 message ChatStreamResponse {
@@ -293,7 +300,8 @@ message ContextRequest {
     optional string rag_query = 2;
     optional float rag_similarity_threshold = 3;
     optional int32 rag_max_k = 4;
-    optional int32 max_chars = 5;
+    optional int32 max_content_length = 5;
+    optional ContextStrategy context_strategy = 6;
     // the overall context strategy across all resources
     // Overrides the context_strategy in Resource???
     // oneof context_strategy {
@@ -304,7 +312,14 @@ message ContextRequest {
 }
 
 message ContextResponse {
+    enum ContextType {
+        IGNORE = 0;
+        FULL_TEXT = 1;
+        RAG = 2;
+    }
+
     string context = 1;
+    map<string, ContextType> context_types = 2;
     // future fields can return metadata about what context was constructed (e.g. which documents in rag)
 }
 
@@ -316,8 +331,8 @@ message ContextResponse {
 // }
 
 // message ContextTypeFullText {
-//     google.protobuf.Int32Value max_chars = 1;
-//     // true if we want to include the beginning of text up to the max_chars (if max_chars is specified)
-//     // false if we want to include the text the end of the text up to the max_chars
+//     google.protobuf.Int32Value max_content_length = 1;
+//     // true if we want to include the beginning of text up to the max_content_length (if max_content_length is specified)
+//     // false if we want to include the text the end of the text up to the max_content_length
 //     bool include_beginning = 2;
 // }

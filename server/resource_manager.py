@@ -1,6 +1,8 @@
 """SQLite-backed resource manager with worker processes for content extraction."""
+from enum import IntEnum
 import json
 import logging
+import logging.config
 import os
 import sqlite3
 from datetime import datetime, timezone
@@ -12,6 +14,7 @@ import aiofiles
 from cachetools import LRUCache
 from dataclasses import dataclass
 from proto.generated import chat_pb2
+from server.agents.context_strategy_agent import ContextStrategyAgent, ContextType
 from server.utilities import (
     clean_text_from_pdf,
     extract_text_from_pdf,
@@ -21,8 +24,18 @@ from server.utilities import (
     CODE_EXTENSIONS,
 )
 from server.vector_db import Document, SimilarityScorer
+from dotenv import load_dotenv
+load_dotenv()
 
 logging.config.fileConfig('config/logging.conf')
+
+
+class ContextStrategy(IntEnum):
+    """Resource retrieval strategy that corresponds to the enum in `.proto`."""
+
+    FULL_TEXT = 0
+    RAG = 1
+    AUTO = 2
 
 
 class ResourceNotFoundError(Exception):
@@ -164,7 +177,8 @@ class ResourceManager:
             db_path: str,
             num_workers: int = 2,
             rag_scorer: SimilarityScorer | None = None,
-            rag_threshold: int = 4000,
+            rag_char_threshold: int = 5000,
+            context_strategy_model: str = 'gpt-4o-mini',
         ):
         """
         Initialize the resource manager.
@@ -176,15 +190,18 @@ class ResourceManager:
                 Number of worker processes to start
             rag_scorer:
                 SimilarityScorer object for semantic search
-            rag_threshold:
-                Minimum character count for RAG. (Documents below this threshold will include
-                the entire content in the context.)
+            rag_char_threshold:
+                Minimum character count for RAG. (Documents below this threshold will automatically
+                include the entire content in the context.)
+            context_strategy_model:
+                Model to use for the strategy agent.
         """
         self.db_path = db_path
         self._manager = Manager()
         self._global_lock = asyncio.Lock()
         self._rag_scorer = rag_scorer
-        self._rag_threshold = rag_threshold
+        self._rag_char_threshold = rag_char_threshold
+        self._context_strategy_model = context_strategy_model
         self._resource_locks = LRUCache(maxsize=1000)
         self._work_queue = Queue()
         self._workers = [
@@ -343,12 +360,13 @@ class ResourceManager:
 
     async def create_context(  # noqa: PLR0912, PLR0915
             self,
-            resources: list[Resource],
+            resources: list[chat_pb2.Resource],
             query: str | None = None,
-            rag_similarity_threshold: float = 0.5,
+            rag_similarity_threshold: float | None = None,
             rag_max_k: int | None = None,
-            max_chars: int | None = None,
-        ) -> str:
+            max_content_length: int | None = None,
+            context_strategy: ContextStrategy | None = None,
+        ) -> tuple[str, dict[str, ContextType]]:
         """
         Create the context that will be given to the model.
 
@@ -357,11 +375,18 @@ class ResourceManager:
             query: Optional query string for semantic search
             rag_similarity_threshold: Minimum similarity score for a chunk to be included
             rag_max_k: Maximum number of chunks to include (not including neighbors)
-            max_chars: Maximum number of characters in the final context
+            max_content_length: Maximum number of characters in the final context
             auto_extract:
                 TBD.
                 If True, uses an agent to decide if each file should be used, and if so, whether
                 to use the full content or use RAG to extract relevant content.
+            context_strategy:
+                Strategy to use for resource retrieval. If `FULL_TEXT`, the full content of each
+                file will be included in the context. If `RAG`, RAG will be used to extract
+                relevant content, except for directories (which will use the entire tree
+                structure), and code files (which will use the full content). If `AUTO`, the
+                "Context Strategy Agent" will be used to determine the strategy for each file:
+                which may include excluding the file, using the full content, or using RAG.
 
         Returns:
             Combined context string
@@ -369,36 +394,92 @@ class ResourceManager:
         Raises:
             ResourceNotFoundError: If any resource cannot be found
         """
-        contexts = []
-        resources_retrieved = set()
-        # Collect documents that need similarity search
-        similarity_docs = []
-        for r in resources:
-            if r.path in resources_retrieved:
-                continue
-            resources_retrieved.add(r.path)
-            resource_data = await self.get_resource(r.path, r.type)
-            # Determine if we should use similarity search
-            use_similarity = (
-                self._rag_scorer and
-                query and
-                r.type != chat_pb2.ResourceType.DIRECTORY and
-                Path(r.path).suffix not in CODE_EXTENSIONS and
-                len(resource_data.content) > self._rag_threshold
+        if not resources:
+            return "", {}
+
+        if rag_similarity_threshold is None:
+            rag_similarity_threshold = 0.5
+        if context_strategy is None:
+            context_strategy = ContextStrategy.RAG
+
+        # dedupe the list of resources by path
+        resources = list({r.path: r for r in resources}.values())
+        # convert list of chat_pb2.Resource to list of Resource objects
+        resources = await asyncio.gather(*(self.get_resource(r.path, r.type) for r in resources))
+
+        if context_strategy == ContextStrategy.AUTO and not self._context_strategy_model:
+            raise ValueError("Resource strategy model must be provided for AUTO strategy")
+        if context_strategy == ContextStrategy.AUTO and not query:
+            raise ValueError("Query must be provided for AUTO strategy")
+
+        def use_full_text(resource: Resource) -> bool:
+            if resource.type == chat_pb2.ResourceType.DIRECTORY:
+                return True
+            if len(resource.content) <= self._rag_char_threshold:
+                return True
+            if resource.type == chat_pb2.ResourceType.FILE:
+                return Path(resource.path).suffix in CODE_EXTENSIONS
+            return False
+
+        # build context strategies which is a list of tuples (resource object and the strategy)
+        if context_strategy == ContextStrategy.FULL_TEXT:
+            context_types_used = [(r, ContextType.FULL_TEXT) for r in resources]
+        elif context_strategy == ContextStrategy.RAG:
+            context_types_used = [
+                (r, ContextType.FULL_TEXT if use_full_text(r) else ContextType.RAG)
+                for r in resources
+            ]
+        elif context_strategy == ContextStrategy.AUTO:
+            # Get context strategy from agent for each file
+            agent = ContextStrategyAgent(model=self._context_strategy_model)
+            summary = await agent(
+                messages=[{"role": "user", "content": query}],
+                resource_names=[r.path for r in resources],
             )
-            if use_similarity:
-                similarity_docs.append(Document(
-                    key=r.path,
-                    content=resource_data.content,
-                    last_modified=resource_data.last_modified,
+            context_types_used = []
+            for s, r in zip(summary.strategies, resources, strict=True):
+                if s.resource_name not in r.path:  # agent might use only the file name without path
+                    raise ValueError("Mismatched file names")
+                # if the strategy is to use RAG then check if we need to override the
+                # agent's recommendation based on the file type/content.
+                if s.context_type == ContextType.RAG and use_full_text(r):
+                    context_types_used.append((r, ContextType.FULL_TEXT))
+                else:
+                    context_types_used.append((r, s.context_type))
+        else:
+            raise ValueError(f"Invalid resource strategy: {context_strategy}")
+
+        if not context_types_used or len(context_types_used) != len(resources):
+            raise ValueError("Invalid context strategies")
+
+        contexts = []
+        # Collect documents that need similarity search
+        rag_resources = []
+        # for each resource, either ignore, get full context, or add to the list of docs we need to
+        # do RAG on
+        for resource, strategy in context_types_used:
+            if strategy == ContextType.IGNORE:
+                continue
+            if strategy == ContextType.FULL_TEXT:
+                contexts.append(f"Content from `{resource.path}`:\n\n```\n{resource.content}\n```")
+            elif strategy == ContextType.RAG:
+                rag_resources.append(Document(
+                    key=resource.path,
+                    content=resource.content,
+                    last_modified=resource.last_modified,
                 ))
             else:
-                logging.info(f"Using full content for `{r.path}` ({len(resource_data.content):,} chars)")  # noqa: E501
-                contexts.append(f"Content from `{r.path}`:\n\n```\n{resource_data.content}\n```")
+                raise ValueError(f"Invalid context strategy: {strategy}")
 
         # Process documents that need similarity search
-        if similarity_docs and self._rag_scorer and query:
-            search_results = self._rag_scorer.score(similarity_docs, query)
+        if rag_resources:
+            logging.info("\n\n++++RAG_RESOURCES")
+            if not (self._rag_scorer and query):
+                raise ValueError("RAG scorer and query must be provided for RAG strategy")
+
+            # returns list of objects containing chunk/score
+            search_results = self._rag_scorer.score(rag_resources, query)
+            # logging.info(f"SEARCH_RESULTS: {search_results}")
             # Group results by document
             results_by_doc = {}
             for result in search_results:
@@ -410,6 +491,9 @@ class ResourceManager:
             for doc_key, doc_results in results_by_doc.items():
                 # Filter chunks above threshold
                 above_threshold = [r for r in doc_results if r.score >= rag_similarity_threshold]
+                logging.info(f"RAG_MAX_K: {rag_max_k}")
+                logging.info(f"ABOVE_THRESHOLD: {above_threshold}")
+
 
                 # Apply rag_max_k if specified
                 if rag_max_k is not None and above_threshold:
@@ -458,15 +542,14 @@ class ResourceManager:
                         doc_context.append("...")
                     doc_context.append("```")
                     doc_context = '\n'.join(doc_context)
-                    logging.info(f"Using RAG for `{doc_key}` ({len(doc_context):,} chars)")
                     contexts.append(doc_context)
 
         final_context = "\n\n".join(contexts)
-        # Apply max_chars if specified
-        if max_chars is not None and len(final_context) > max_chars:
-            final_context = final_context[-max_chars:]
+        # Apply max_content_length if specified
+        if max_content_length is not None and len(final_context) > max_content_length:
+            final_context = final_context[-max_content_length:]
 
-        return final_context
+        return final_context, {r.path: s for r, s in context_types_used}
 
     async def shutdown(self) -> None:
         """Shutdown worker processes."""

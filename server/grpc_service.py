@@ -17,6 +17,7 @@ from google.protobuf import timestamp_pb2, empty_pb2
 from sentence_transformers import SentenceTransformer
 import yaml
 from proto.generated import chat_pb2, chat_pb2_grpc
+from server.agents.context_strategy_agent import ContextType
 from server.async_merge import AsyncMerge
 from server.model_config_manager import ModelConfigManager
 from server.model_registry import ModelRegistry
@@ -46,9 +47,10 @@ class CompletionServiceConfig:
     supported_models: list[dict]
     channel: grpc.aio.Channel
     initial_conversations: list[chat_pb2.Conversation] | None = None
-    rag_similarity_threshold: float = 0.5
+    rag_similarity_threshold: float = 0.3
     rag_max_k: int = 20
-    max_chars: int = 200_000
+    max_content_length: int = 200_000
+
 
 @dataclass
 class ContextServiceConfig:
@@ -57,7 +59,8 @@ class ContextServiceConfig:
     database_uri: str
     num_workers: int
     rag_scorer: SimilarityScorer | None = None
-    rag_char_threshold: int = 4000
+    rag_char_threshold: int = 5000
+    context_strategy_model: str | None = None
 
 
 @dataclass
@@ -122,6 +125,7 @@ def create_wrapper_instance(
         top_p=top_p,
     )
 
+
 def inject_context(
         messages: list[dict],
         resource_context: str | None,
@@ -168,7 +172,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
         self.channel = config.channel
         self._rag_similarity_threshold = config.rag_similarity_threshold
         self._rag_max_k = config.rag_max_k
-        self._max_chars = config.max_chars
+        self._max_content_length = config.max_content_length
 
     async def initialize(self) -> None:
         """Initialize the service. Need to define this in async function."""
@@ -401,7 +405,8 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                             rag_query=request.messages[-1].content,
                             rag_similarity_threshold=self._rag_similarity_threshold,
                             rag_max_k=self._rag_max_k,
-                            max_chars=self._max_chars,
+                            max_content_length=self._max_content_length,
+                            context_strategy=request.context_strategy,
                         ),
                     )
                     resource_context = context_response.context
@@ -706,7 +711,8 @@ class ContextService(chat_pb2_grpc.ContextServiceServicer):
             db_path=config.database_uri,
             num_workers=config.num_workers,
             rag_scorer=config.rag_scorer,
-            rag_threshold=config.rag_char_threshold,
+            rag_char_threshold=config.rag_char_threshold,
+            context_strategy_model=config.context_strategy_model,
         )
 
     async def initialize(self) -> None:
@@ -784,14 +790,39 @@ class ContextService(chat_pb2_grpc.ContextServiceServicer):
     ) -> chat_pb2.ContextResponse:
         """Get context for the given resources."""
         try:
-            context_str = await self.resource_manager.create_context(
+            logging.info(f"Getting context for resources: {request}")
+            logging.info(f"rag_max_k has value: {request.HasField('rag_max_k')}")
+            query = request.rag_query if request.HasField('rag_query') else None
+            sim_threshold = request.rag_similarity_threshold if request.HasField('rag_similarity_threshold') else None  # noqa: E501
+            max_k = request.rag_max_k if request.HasField('rag_max_k') else None
+            max_content_length = request.max_content_length if request.HasField('max_content_length') else None  # noqa: E501
+            strategy = request.context_strategy if request.HasField('context_strategy') else None
+            context_str, context_types = await self.resource_manager.create_context(
                 resources=request.resources,
-                query=request.rag_query,
-                rag_similarity_threshold=request.rag_similarity_threshold,
-                rag_max_k=request.rag_max_k,
-                max_chars=request.max_chars,
+                query=query,
+                rag_similarity_threshold=sim_threshold,
+                rag_max_k=max_k,
+                max_content_length=max_content_length,
+                context_strategy=strategy,
             )
-            return chat_pb2.ContextResponse(context=context_str)
+            logging.info(f"Context context_types: {context_types}")
+            # Convert the Python enum values to protobuf enum values
+            proto_context_types = {}
+            for path, strategy in context_types.items():
+                if strategy == ContextType.IGNORE:
+                    proto_context_types[path] = chat_pb2.ContextResponse.ContextType.IGNORE
+                elif strategy == ContextType.FULL_TEXT:
+                    proto_context_types[path] = chat_pb2.ContextResponse.ContextType.FULL_TEXT
+                elif strategy == ContextType.RAG:
+                    proto_context_types[path] = chat_pb2.ContextResponse.ContextType.RAG
+                else:
+                    self.logger.error(f"Unknown context strategy: {strategy}")
+                    raise ValueError(f"Unknown context strategy: {strategy}")
+
+            return chat_pb2.ContextResponse(
+                context=context_str,
+                context_types=proto_context_types,
+            )
         except ResourceNotFoundError as e:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details(str(e))
@@ -801,6 +832,7 @@ class ContextService(chat_pb2_grpc.ContextServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
             raise
+
 
 class ConfigurationService(chat_pb2_grpc.ConfigurationServiceServicer):
     """Represents the agent's chat service."""
@@ -904,6 +936,7 @@ async def serve() -> None:
             database_uri=db_path,
             num_workers=3,
             rag_scorer=SimilarityScorer(SentenceTransformer('all-MiniLM-L6-v2'), chunk_size=500),
+            context_strategy_model='gpt-4o',
         ),
     )
     await context_service.initialize()

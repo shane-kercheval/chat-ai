@@ -160,7 +160,7 @@ class SimilarityScorer:
         # Calculate similarities
         return np.dot(chunk_embeddings, query_embedding) / (chunk_norms * query_norm)
 
-    def score(self, documents: list[Document], query: str) -> list[tuple[Chunk, float]]:
+    def score(self, documents: list[Document], query: str) -> list[SearchResult]:
         """Score all chunks against query."""
         # Get all chunks with embeddings
         chunks = self._get_document_chunks(documents)

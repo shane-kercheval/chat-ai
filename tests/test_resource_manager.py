@@ -11,7 +11,8 @@ import aiofiles
 import numpy as np
 
 from proto.generated import chat_pb2
-from server.resource_manager import ResourceManager, ResourceNotFoundError
+from server.agents.context_strategy_agent import ContextType
+from server.resource_manager import ResourceManager, ResourceNotFoundError, ContextStrategy
 from server.vector_db import SimilarityScorer
 from tests.conftest import create_temp_file
 
@@ -863,13 +864,18 @@ class TestContextCreation:
                 path=file_path,
                 type=chat_pb2.ResourceType.FILE,
             )
-            context = await manager.create_context([
-                chat_pb2.Resource(
-                    path=file_path,
-                    type=chat_pb2.ResourceType.FILE,
-                ),
-            ])
+            context, strategies = await manager.create_context(
+                [
+                    chat_pb2.Resource(
+                        path=file_path,
+                        type=chat_pb2.ResourceType.FILE,
+                    ),
+                ],
+            )
+            assert file_path in context
             assert "Test content" in context
+            assert file_path in strategies
+            assert strategies[file_path] == ContextType.FULL_TEXT
         finally:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
@@ -893,7 +899,7 @@ class TestContextCreation:
                 type=chat_pb2.ResourceType.FILE,
             )
 
-            context = await manager.create_context([
+            context, strategies = await manager.create_context([
                 chat_pb2.Resource(
                     path=file1_path,
                     type=chat_pb2.ResourceType.FILE,
@@ -903,10 +909,14 @@ class TestContextCreation:
                     type=chat_pb2.ResourceType.FILE,
                 ),
             ])
-
+            assert file1_path in context
+            assert file2_path in context
             assert "Content 1" in context
             assert "Content 2" in context
-
+            assert file1_path in strategies
+            assert strategies[file1_path] == ContextType.FULL_TEXT
+            assert file2_path in strategies
+            assert strategies[file2_path] == ContextType.FULL_TEXT
         finally:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
@@ -929,7 +939,7 @@ class TestContextCreation:
                     type=chat_pb2.ResourceType.FILE,
                 )
 
-                context = await manager.create_context([
+                context, strategies = await manager.create_context([
                     chat_pb2.Resource(
                         path=file_path,
                         type=chat_pb2.ResourceType.FILE,
@@ -939,11 +949,14 @@ class TestContextCreation:
                         type=chat_pb2.ResourceType.DIRECTORY,
                     ),
                 ])
-
                 assert file_path in context
                 assert "File content" in context
                 assert "file1.txt" in context
                 assert "file2.txt" in context
+                assert file_path in strategies
+                assert strategies[file_path] == ContextType.FULL_TEXT
+                assert temp_dir in strategies
+                assert strategies[temp_dir] == ContextType.FULL_TEXT
         finally:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
@@ -974,9 +987,9 @@ class TestContextCreation:
             db_path = create_temp_db_path()
             manager = ResourceManager(db_path)
             await manager.initialize()
-            context = await manager.create_context([])
+            context, strategies = await manager.create_context([])
             assert context == ""
-
+            assert not strategies
         finally:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
@@ -994,16 +1007,16 @@ class TestContextCreation:
                 type=chat_pb2.ResourceType.WEBPAGE,
             )
 
-            context = await manager.create_context([
+            context, strategies = await manager.create_context([
                 chat_pb2.Resource(
                     path=url,
                     type=chat_pb2.ResourceType.WEBPAGE,
                 ),
             ])
-
             assert url in context
             assert "Example Domain" in context
-
+            assert url in strategies
+            assert strategies[url] == ContextType.FULL_TEXT
         finally:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
@@ -1021,7 +1034,7 @@ class TestContextCreation:
                 type=chat_pb2.ResourceType.FILE,
             )
 
-            context = await manager.create_context([
+            context, strategies = await manager.create_context([
                 chat_pb2.Resource(
                     path=file_path,
                     type=chat_pb2.ResourceType.FILE,
@@ -1034,6 +1047,8 @@ class TestContextCreation:
             # ensure "test content" only appears once in the context
             assert context.count('Test content') == 1
             assert context.count(file_path) == 1
+            assert file_path in strategies
+            assert strategies[file_path] == ContextType.FULL_TEXT
         finally:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
@@ -1078,7 +1093,7 @@ class MockEmbeddingModel:
 
 
 @pytest.mark.asyncio
-class TestResourceManagerRAG:
+class TestResourceManagerContextRAG:
     """Tests for ResourceManager RAG functionality."""
 
     async def test_rag_threshold_behavior(self):
@@ -1103,24 +1118,29 @@ class TestResourceManagerRAG:
             manager = ResourceManager(
                 db_path=db_path,
                 rag_scorer=SimilarityScorer(MockEmbeddingModel(), chunk_size=100),
-                rag_threshold=1000,  # Set high threshold
+                rag_char_threshold=1000,  # Set high threshold
             )
             await manager.initialize()
             await manager.add_resource(file_small, chat_pb2.ResourceType.FILE)
 
-            context_small = await manager.create_context(
+            context_small, strategies = await manager.create_context(
                 [chat_pb2.Resource(path=file_small, type=chat_pb2.ResourceType.FILE)],
                 query="machine learning",
                 rag_similarity_threshold=0.7,
+                context_strategy=ContextStrategy.RAG,
             )
             # Should include full content since below threshold
+            assert file_small in context_small
             assert content in context_small
+            assert file_small in strategies
+            assert strategies[file_small] == ContextType.FULL_TEXT
 
-            context_small = await manager.create_context(
+            context_small, _ = await manager.create_context(
                 [chat_pb2.Resource(path=file_small, type=chat_pb2.ResourceType.FILE)],
                 query="machine learning",
                 rag_similarity_threshold=0.7,
-                max_chars=20,
+                max_content_length=20,
+                context_strategy=ContextStrategy.RAG,
             )
             assert len(context_small) == 20
             assert 'well.' in context_small
@@ -1131,15 +1151,19 @@ class TestResourceManagerRAG:
                 db_path=db_path,
                 # low chunk size ensure each sentence is a chunk
                 rag_scorer=SimilarityScorer(MockEmbeddingModel(), chunk_size=10),
-                rag_threshold=10,  # Set low threshold
+                rag_char_threshold=10,  # Set low threshold
             )
             await manager.initialize()
             await manager.add_resource(file_large, chat_pb2.ResourceType.FILE)
-            context_large = await manager.create_context(
+            context_large, strategies = await manager.create_context(
                 [chat_pb2.Resource(path=file_large, type=chat_pb2.ResourceType.FILE)],
                 query="machine learning",
                 rag_similarity_threshold=0.7,
+                context_strategy=ContextStrategy.RAG,
             )
+            assert file_large in context_large
+            assert file_large in strategies
+            assert strategies[file_large] == ContextType.RAG
             # machine learning will be above threshold
             assert context_large.count("01") == 1
             assert context_large.count("02") == 1
@@ -1152,10 +1176,11 @@ class TestResourceManagerRAG:
             assert "09" not in context_large
             assert "10" not in context_large
 
-            context_large = await manager.create_context(
+            context_large, _ = await manager.create_context(
                 [chat_pb2.Resource(path=file_large, type=chat_pb2.ResourceType.FILE)],
                 query="machine learning",
                 rag_similarity_threshold=0.85,
+                context_strategy=ContextStrategy.RAG,
             )
             # machine learning will be above threshold
             assert context_large.count("01") == 1
@@ -1185,17 +1210,22 @@ class TestResourceManagerRAG:
             manager = ResourceManager(
                 db_path=db_path,
                 rag_scorer=SimilarityScorer(MockEmbeddingModel(), chunk_size=10),
-                rag_threshold=10,  # Very low threshold
+                # Set low threshold to ensure we don't create a false negative by bypassing RAG
+                rag_char_threshold=10,
             )
             await manager.initialize()
             await manager.add_resource(code_path, chat_pb2.ResourceType.FILE)
-            context = await manager.create_context(
+            context, strategies = await manager.create_context(
                 [chat_pb2.Resource(path=code_path, type=chat_pb2.ResourceType.FILE)],
                 query="machine learning",
                 rag_similarity_threshold=0.7,
+                context_strategy=ContextStrategy.RAG,
             )
             # Should include full content, not RAG results
+            assert code_path in context
             assert context.count("def machine_learning()") == 100
+            assert code_path in strategies
+            assert strategies[code_path] == ContextType.FULL_TEXT
         finally:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
@@ -1210,17 +1240,20 @@ class TestResourceManagerRAG:
             manager = ResourceManager(
                 db_path=db_path,
                 rag_scorer=SimilarityScorer(MockEmbeddingModel(), chunk_size=10),
-                rag_threshold=100,
+                rag_char_threshold=100,
             )
             await manager.initialize()
             await manager.add_resource(file_path, chat_pb2.ResourceType.FILE)
-            context = await manager.create_context(
+            context, strategies = await manager.create_context(
                 [chat_pb2.Resource(path=file_path, type=chat_pb2.ResourceType.FILE)],
                 query="machine learning",
                 rag_similarity_threshold=0.7,
+                context_strategy=ContextStrategy.RAG,
             )
             # Document should not appear in context at all since no chunks met threshold
             assert context == ''
+            assert file_path in strategies
+            assert strategies[file_path] == ContextType.RAG
         finally:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
@@ -1244,12 +1277,12 @@ class TestResourceManagerRAG:
                 manager = ResourceManager(
                     db_path=db_path,
                     rag_scorer=SimilarityScorer(MockEmbeddingModel(), chunk_size=10),
-                    rag_threshold=10,
+                    rag_char_threshold=10,
                 )
                 await manager.initialize()
                 await manager.add_resource(text_file, chat_pb2.ResourceType.FILE)
                 await manager.add_resource(code_path, chat_pb2.ResourceType.FILE)
-                context = await manager.create_context(
+                context, strategies = await manager.create_context(
                     [
                         chat_pb2.Resource(path=text_file, type=chat_pb2.ResourceType.FILE),
                         chat_pb2.Resource(path=code_path, type=chat_pb2.ResourceType.FILE),
@@ -1257,6 +1290,7 @@ class TestResourceManagerRAG:
                     ],
                     query="machine learning",
                     rag_similarity_threshold=0.99,
+                    context_strategy=ContextStrategy.RAG,
                 )
                 # Text file should use RAG and threshold is set to 0.99
                 assert context.count("Machine learning concepts") == 0
@@ -1265,6 +1299,12 @@ class TestResourceManagerRAG:
                 # Directory should show tree structure
                 assert "file1.txt" in context
                 assert "file2.txt" in context
+                assert text_file in strategies
+                assert strategies[text_file] == ContextType.RAG
+                assert code_path in strategies
+                assert strategies[code_path] == ContextType.FULL_TEXT
+                assert temp_dir in strategies
+                assert strategies[temp_dir] == ContextType.FULL_TEXT
             finally:
                 await manager.shutdown()
                 Path(db_path).unlink(missing_ok=True)
@@ -1293,17 +1333,21 @@ class TestResourceManagerRAG:
                 db_path=db_path,
                 # low chunk size ensure each sentence is a chunk
                 rag_scorer=SimilarityScorer(MockEmbeddingModel(), chunk_size=10),
-                rag_threshold=10,  # Set low threshold
+                rag_char_threshold=10,  # Set low threshold
             )
             await manager.initialize()
             await manager.add_resource(file_large, chat_pb2.ResourceType.FILE)
 
-            context_large = await manager.create_context(
+            context_large, strategies = await manager.create_context(
                 [chat_pb2.Resource(path=file_large, type=chat_pb2.ResourceType.FILE)],
                 query="machine learning",
                 rag_similarity_threshold=0.7,
                 rag_max_k=3,
+                context_strategy=ContextStrategy.RAG,
             )
+            assert file_large in context_large
+            assert file_large in strategies
+            assert strategies[file_large] == ContextType.RAG
             # machine learning will be above threshold
             assert context_large.count("01") == 1
             assert context_large.count("02") == 1
@@ -1316,12 +1360,16 @@ class TestResourceManagerRAG:
             assert "09" not in context_large
             assert "10" not in context_large
 
-            context = await manager.create_context(
+            context, strategies = await manager.create_context(
                 [chat_pb2.Resource(path=file_large, type=chat_pb2.ResourceType.FILE)],
                 query="machine learning",
                 rag_similarity_threshold=0.7,
                 rag_max_k=1,
+                context_strategy=ContextStrategy.RAG,
             )
+            assert file_large in context
+            assert file_large in strategies
+            assert strategies[file_large] == ContextType.RAG
             # machine learning will be above threshold
             assert context.count("01") == 1
             assert context.count("02") == 1
@@ -1334,12 +1382,16 @@ class TestResourceManagerRAG:
             assert "09" not in context
             assert "10" not in context
 
-            context = await manager.create_context(
+            context, strategies = await manager.create_context(
                 [chat_pb2.Resource(path=file_large, type=chat_pb2.ResourceType.FILE)],
                 query="machine learning",
                 rag_similarity_threshold=0.85,
                 rag_max_k=1,
+                context_strategy=ContextStrategy.RAG,
             )
+            assert file_large in context
+            assert file_large in strategies
+            assert strategies[file_large] == ContextType.RAG
             # machine learning will be above threshold
             assert context.count("01") == 1
             assert context.count("02") == 1
@@ -1355,3 +1407,151 @@ class TestResourceManagerRAG:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
             Path(file_large).unlink(missing_ok=True)
+
+
+@pytest.mark.asyncio
+class TestResourceManagerContextAuto:
+    """Tests the `ResourceStrategy.AUTO` with `create_context`."""
+
+    async def test_auto_strategy_requires_query(self):
+        """Test that AUTO strategy requires a query."""
+        try:
+            db_path = create_temp_db_path()
+            file_path = create_temp_file("Test content")
+            manager = ResourceManager(
+                db_path=db_path,
+                rag_scorer=SimilarityScorer(MockEmbeddingModel()),
+            )
+            await manager.initialize()
+            await manager.add_resource(file_path, chat_pb2.ResourceType.FILE)
+            with pytest.raises(ValueError):  # noqa: PT011
+                await manager.create_context(
+                    [chat_pb2.Resource(path=file_path, type=chat_pb2.ResourceType.FILE)],
+                    query=None,
+                    context_strategy=ContextStrategy.AUTO,
+                )
+        finally:
+            await manager.shutdown()
+            Path(db_path).unlink(missing_ok=True)
+            Path(file_path).unlink(missing_ok=True)
+
+    async def test_auto_strategy_requires_model(self):
+        """Test that AUTO strategy requires a model to be configured."""
+        try:
+            db_path = create_temp_db_path()
+            file_path = create_temp_file("Test content")
+            manager = ResourceManager(
+                db_path=db_path,
+                rag_scorer=SimilarityScorer(MockEmbeddingModel()),
+                context_strategy_model=None,
+            )
+            await manager.initialize()
+            await manager.add_resource(file_path, chat_pb2.ResourceType.FILE)
+            with pytest.raises(ValueError):  # noqa: PT011
+                await manager.create_context(
+                    [chat_pb2.Resource(path=file_path, type=chat_pb2.ResourceType.FILE)],
+                    query="test query",
+                    context_strategy=ContextStrategy.AUTO,
+                )
+        finally:
+            await manager.shutdown()
+            Path(db_path).unlink(missing_ok=True)
+            Path(file_path).unlink(missing_ok=True)
+
+    async def test_auto_strategy_code_files(self):
+        """Test that code files always use FULL_TEXT even if agent suggests RAG."""
+        try:
+            db_path = create_temp_db_path()
+            # Create a Python file with ML-related content that might trigger RAG
+            code_content = "def train_model():\n    # ML training code\n    pass\n" * 100
+            code_file = create_temp_file(code_content)
+            code_path = f"{code_file}.py"
+            os.rename(code_file, code_path)
+            manager = ResourceManager(
+                db_path=db_path,
+                rag_scorer=SimilarityScorer(MockEmbeddingModel(), chunk_size=10),
+                # set low threshold to ensure we don't create a false negative by bypassing RAG
+                rag_char_threshold=10,
+                context_strategy_model="gpt-4o-mini",
+            )
+            await manager.initialize()
+            await manager.add_resource(code_path, chat_pb2.ResourceType.FILE)
+            context, strategies = await manager.create_context(
+                [chat_pb2.Resource(path=code_path, type=chat_pb2.ResourceType.FILE)],
+                query="How does the model training work?",
+                context_strategy=ContextStrategy.AUTO,
+            )
+            assert code_path in context
+            assert context.count("def train_model()") == 100  # Full content included
+            assert code_path in strategies
+            assert strategies[code_path] == ContextType.FULL_TEXT
+        finally:
+            await manager.shutdown()
+            Path(db_path).unlink(missing_ok=True)
+            Path(code_path).unlink(missing_ok=True)
+
+    async def test_auto_strategy_mixed_content_types(self):
+        """Test AUTO strategy with mixed content types and queries."""
+        try:
+            db_path = create_temp_db_path()
+            # readme content with length over threshold so we should use RAG
+            readme_content = "# Overview\nThe project name is `project_abc`. " * 50
+            readme_path = create_temp_file(
+                readme_content,
+                prefix='project_readme_',
+                suffix='.md',
+            )
+            # code content with length over threshold but we should override RAG and use FULL
+            code_content = "def process_data(): pass\n" * 50
+            code_path = create_temp_file(
+                code_content,
+                prefix='server_generated_',
+                suffix='.py',
+            )
+
+            manager = ResourceManager(
+                db_path=db_path,
+                rag_scorer=SimilarityScorer(MockEmbeddingModel(), chunk_size=10),
+                # set low threshold to ensure we don't create a false negative by bypassing RAG
+                rag_char_threshold=10,
+                context_strategy_model='gpt-4o',
+            )
+            await manager.initialize()
+            await manager.add_resource(readme_path, chat_pb2.ResourceType.FILE)
+            await manager.add_resource(code_path, chat_pb2.ResourceType.FILE)
+
+            # Test with documentation-focused query
+            _, strategies = await manager.create_context(
+                [
+                    chat_pb2.Resource(path=readme_path, type=chat_pb2.ResourceType.FILE),
+                    chat_pb2.Resource(path=code_path, type=chat_pb2.ResourceType.FILE),
+                ],
+                query="What is the project name as defined in the overview of the readme?",
+                context_strategy=ContextStrategy.AUTO,
+            )
+
+            assert readme_path in strategies
+            assert code_path in strategies
+            # Documentation should be included
+            assert strategies[readme_path] in [ContextType.RAG, ContextType.FULL_TEXT]
+            # Code should be ignored for this query
+            assert strategies[code_path] in [ContextType.IGNORE]
+
+            # Test with code-focused query
+            _, strategies = await manager.create_context(
+                [
+                    chat_pb2.Resource(path=readme_path, type=chat_pb2.ResourceType.FILE),
+                    chat_pb2.Resource(path=code_path, type=chat_pb2.ResourceType.FILE),
+                ],
+                query="What is the `extract_data` function in the generate code in the server?",
+                context_strategy=ContextStrategy.AUTO,
+            )
+            # Code should be included and use FULL_TEXT
+            assert strategies[code_path] == ContextType.FULL_TEXT
+            # Documentation might be ignored or RAG
+            assert strategies[readme_path] in [ContextType.IGNORE, ContextType.RAG]
+        finally:
+            await manager.shutdown()
+            Path(db_path).unlink(missing_ok=True)
+            Path(readme_path).unlink(missing_ok=True)
+            Path(code_path).unlink(missing_ok=True)

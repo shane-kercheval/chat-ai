@@ -1,14 +1,17 @@
 """Tests for context strategy agent."""
 import asyncio
 import pytest
-from server.models.openai import FunctionCallResult
 from server.agents.context_strategy_agent import (
     ContextStrategyAgent,
+    ContextStrategyResult,
     ContextStrategySummary,
+    ContextType,
 )
+from dotenv import load_dotenv
+load_dotenv()
 
 TEST_MODEL = "gpt-4o-mini"
-VALID_STRATEGIES = ['skip', 'retrieve_full', 'retrieve_relevant']
+VALID_STRATEGIES = [ContextType.IGNORE, ContextType.FULL_TEXT, ContextType.RAG]
 
 @pytest.mark.asyncio
 class TestContextStrategyBasics:
@@ -25,16 +28,13 @@ class TestContextStrategyBasics:
             {"role": "user", "content": "Can you summarize this document?"},
         ]
         files = ['report.pdf']
-        summary = await agent(messages=messages, file_names=files)
+        summary = await agent(messages=messages, resource_names=files)
         assert isinstance(summary, ContextStrategySummary)
-        assert len(summary.results) == 1
-        assert isinstance(summary.results[0], FunctionCallResult)
-        assert 'file_name' in summary.results[0].arguments
-        assert 'retrieval_strategy' in summary.results[0].arguments
-        assert 'reasoning' in summary.results[0].arguments
-        assert 'report.pdf' in summary.results[0].arguments['file_name']
-        assert summary.results[0].arguments['retrieval_strategy'] in VALID_STRATEGIES
-        assert summary.results[0].arguments['reasoning']
+        assert len(summary.strategies) == 1
+        assert isinstance(summary.strategies[0], ContextStrategyResult)
+        assert summary.strategies[0].resource_name == files[0]
+        assert summary.strategies[0].context_type in VALID_STRATEGIES
+        assert summary.strategies[0].reasoning
         assert summary.total_input_tokens > 0
         assert summary.total_output_tokens > 0
         assert summary.total_input_cost > 0
@@ -47,16 +47,13 @@ class TestContextStrategyBasics:
             {"role": "user", "content": "What's the total revenue mentioned in these reports?"},
         ]
         files = ["q1_report.pdf", "q2_report.pdf", "q3_report.pdf"]
-        summary = await agent(messages=messages, file_names=files)
-        assert len(summary.results) == 3
+        summary = await agent(messages=messages, resource_names=files)
+        assert len(summary.strategies) == 3
         assert summary.total_cost == pytest.approx(summary.total_input_cost + summary.total_output_cost)  # noqa: E501
-        for result, file_name in zip(summary.results, files, strict=True):
-            assert 'file_name' in result.arguments
-            assert 'retrieval_strategy' in result.arguments
-            assert 'reasoning' in result.arguments
-            assert file_name in result.arguments['file_name']
-            assert result.arguments['retrieval_strategy'] in VALID_STRATEGIES
-            assert result.arguments['reasoning']
+        for result, resource_name in zip(summary.strategies, files, strict=True):
+            assert result.resource_name == resource_name
+            assert result.context_type in VALID_STRATEGIES
+            assert result.reasoning
 
 
 @pytest.mark.asyncio
@@ -75,10 +72,10 @@ class TestRetrievalStrategies:
                 'question': 'Show the implementation in the server for api requests.',
                 'files': ['server_api.py', 'client_ui.tsx', 'client.css', 'attention_is_all_you_need.pdf'],  # noqa: E501
                 'expected_strategies': {
-                    'server_api.py': ['retrieve_full', 'retrieve_relevant'],
-                    'client_ui.tsx': ['skip'],
-                    'client.css': ['skip'],
-                    'attention_is_all_you_need.pdf': ['skip'],
+                    'server_api.py': [ContextType.FULL_TEXT, ContextType.RAG],
+                    'client_ui.tsx': [ContextType.IGNORE],
+                    'client.css': [ContextType.IGNORE],
+                    'attention_is_all_you_need.pdf': [ContextType.IGNORE],
                 },
             },
             id='server_api_handling',
@@ -89,10 +86,10 @@ class TestRetrievalStrategies:
                 'question': 'Show the formatting for the login form in the UI files?',
                 'files': ['client_login_ui.tsx', 'grpc_api_service.py', 'main.css', 'attention_is_all_you_need.pdf'],  # noqa: E501
                 'expected_strategies': {
-                    'client_login_ui.tsx': ['retrieve_full', 'retrieve_relevant'],
-                    'grpc_api_service.py': ['skip'],
-                    'main.css': ['retrieve_full', 'retrieve_relevant'],
-                    'attention_is_all_you_need.pdf': ['skip'],
+                    'client_login_ui.tsx': [ContextType.FULL_TEXT, ContextType.RAG],
+                    'grpc_api_service.py': [ContextType.IGNORE],
+                    'main.css': [ContextType.FULL_TEXT, ContextType.RAG],
+                    'attention_is_all_you_need.pdf': [ContextType.IGNORE],
                 },
             },
             id='ui_implementation',
@@ -111,13 +108,13 @@ class TestRetrievalStrategies:
         expected_strategies = test_case["expected_strategies"]
         # Run 20 times concurrently
         summaries = await asyncio.gather(*(
-            agent(messages=messages, file_names=files)
+            agent(messages=messages, resource_names=files)
             for _ in range(sample_size)
         ))
         # [s.results[1].arguments for s in summaries]
         for i in range(len(expected_strategies)):
-            assert sum(s.results[i].arguments['file_name'] in expected_strategies for s in summaries) >= pass_threshold  # noqa: E501
-            assert sum(s.results[i].arguments['retrieval_strategy'] in expected_strategies[s.results[i].arguments['file_name']] for s in summaries) >= pass_threshold  # noqa: E501
+            assert sum(s.strategies[i].resource_name in expected_strategies for s in summaries) >= pass_threshold  # noqa: E501
+            assert sum(s.strategies[i].context_type in expected_strategies[s.strategies[i].resource_name] for s in summaries) >= pass_threshold  # noqa: E501
 
     @pytest.mark.parametrize('test_case', [
         pytest.param(
@@ -125,10 +122,10 @@ class TestRetrievalStrategies:
                 'question': 'Please provide a summary of these financial documents.',
                 'files': ['2023_annual_report.pdf', '2024_q1_report.pdf', 'server_api.py', 'weather_report.pdf'],  # noqa: E501
                 'expected_strategies': {
-                    '2023_annual_report.pdf': ['retrieve_full'],
-                    '2024_q1_report.pdf': ['retrieve_full'],
-                    'server_api.py': ['skip'],
-                    'weather_report.pdf': ['skip'],
+                    '2023_annual_report.pdf': [ContextType.FULL_TEXT],
+                    '2024_q1_report.pdf': [ContextType.FULL_TEXT],
+                    'server_api.py': [ContextType.IGNORE],
+                    'weather_report.pdf': [ContextType.IGNORE],
                 },
             },
             id='summarize_documents',
@@ -138,10 +135,10 @@ class TestRetrievalStrategies:
                 'question': 'What were the Q3 2023 revenue numbers for the North America region?',
                 'files': ['2023_annual_report.pdf', '2023_q3_report.pdf', 'q3_meeting_notes.txt', 'weather_report.md'],  # noqa: E501
                 'expected_strategies': {
-                    '2023_annual_report.pdf': ['retrieve_relevant'],
-                    '2023_q3_report.pdf': ['retrieve_relevant'],
-                    'q3_meeting_notes.txt': ['retrieve_relevant'],
-                    'weather_report.md': ['skip'],
+                    '2023_annual_report.pdf': [ContextType.RAG],
+                    '2023_q3_report.pdf': [ContextType.RAG],
+                    'q3_meeting_notes.txt': [ContextType.RAG],
+                    'weather_report.md': [ContextType.IGNORE],
                 },
             },
             id='specific_information_query',
@@ -156,10 +153,10 @@ class TestRetrievalStrategies:
                     'strategic_plan.docx',
                 ],
                 'expected_strategies': {
-                    'attention_is_all_you_need.pdf': ['retrieve_relevant'],
-                    'financial_summary.pdf': ['skip'],
-                    'q4_projections.xlsx': ['skip'],
-                    'strategic_plan.docx': ['skip'],
+                    'attention_is_all_you_need.pdf': [ContextType.RAG],
+                    'financial_summary.pdf': [ContextType.IGNORE],
+                    'q4_projections.xlsx': [ContextType.IGNORE],
+                    'strategic_plan.docx': [ContextType.IGNORE],
                 },
             },
             id='attention',
@@ -177,10 +174,10 @@ class TestRetrievalStrategies:
         files = test_case["files"]
         expected_strategies = test_case["expected_strategies"]
         summaries = await asyncio.gather(*(
-            agent(messages=messages, file_names=files)
+            agent(messages=messages, resource_names=files)
             for _ in range(sample_size)
         ))
-        [s.results[0].arguments for s in summaries]
+        # [s.strategies[0] for s in summaries]
         for i in range(len(expected_strategies)):
-            assert sum(s.results[i].arguments['file_name'] in expected_strategies for s in summaries) >= pass_threshold  # noqa: E501
-            assert sum(s.results[i].arguments['retrieval_strategy'] in expected_strategies[s.results[i].arguments['file_name']] for s in summaries) >= pass_threshold  # noqa: E501
+            assert sum(s.strategies[i].resource_name in expected_strategies for s in summaries) >= pass_threshold  # noqa: E501
+            assert sum(s.strategies[i].context_type in expected_strategies[s.strategies[i].resource_name] for s in summaries) >= pass_threshold  # noqa: E501
