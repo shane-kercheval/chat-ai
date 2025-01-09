@@ -1,6 +1,6 @@
 # Overview
 
-[!documentation/chat-ai.gif](!documentation/chat-ai.gif)
+![Demo](documentation/chat-ai.gif)
 
 This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude, or local models via LM Studio or other lamma.cpp-based services). It runs a gRPC inference and resource (e.g. file attachment) service.
 
