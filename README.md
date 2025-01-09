@@ -14,18 +14,16 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 
 # Running the Client/Server
 
+- install brew
+    - `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+- install node
+    - `brew install node`
+- install `uv`
+    - `pip install uv`
 - add `.env` file with `OPENAI_API_KEY` and `ATHROPIC_API_KEY` keys/tokens.
 - run `make electron-setup`
 - run `make run`
     - or start server with `make run-server` and start app with `make run-app`
-
-# Caveats / Gotchas
-
-- Cannot do `shift+enter` for new line in MacOS terminal because it doesn't support "extended key protocol".
-    - Use `iterm`
-- In `iterm` you have to hold down `option` in order to select tesxt to copy from messages. 
-    - (`shift` in windows according to textual FAQ?; haven't tried)
-
 
 ## Testing
 
@@ -56,35 +54,6 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
         }
         ```
 
-## Running
-
-- install brew
-    - `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
-- install node
-    - `brew install node`
-- install `uv`
-    - `pip install uv`
-- run server: `make run-server`
-- run electron app:
-    - `make electron-setup`
-    - `make run-electron`
-
-
-
-# Electron
-
-- `brew install node`
-- .env file
-- npm install  # This installs everything from package.json into node_modules
-- npm start
-
-
-
-# Gotchas
-
-- Cancelling the request doesn't add tokens/costs to summary.
-
-
 
 ## TODO
 
@@ -92,8 +61,8 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 
 **Models**
 
-- [ ] Multiple Local Models
-- [ ] Claude
+- [x] Claude
+- [x] Local Models
 - [ ] OpenAI images
 - [ ] Claude images
 
@@ -154,6 +123,8 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 **Misc.**
 
 - [ ] Stream Update events to client; client sidebar should have new tab for seeing updates
+- [ ] Cancelling the request doesn't add tokens/costs to summary.
+
 
 **Resources**
 
