@@ -408,7 +408,7 @@ class ResourceManager:
         resources = await asyncio.gather(*(self.get_resource(r.path, r.type) for r in resources))
 
         if context_strategy == ContextStrategy.AUTO and not self._context_strategy_model:
-            raise ValueError("Resource strategy model must be provided for AUTO strategy")
+            raise ValueError("Context strategy model must be provided for AUTO strategy")
         if context_strategy == ContextStrategy.AUTO and not query:
             raise ValueError("Query must be provided for AUTO strategy")
 
@@ -438,7 +438,7 @@ class ResourceManager:
             )
             context_types_used = []
             for s, r in zip(summary.strategies, resources, strict=True):
-                if s.resource_name not in r.path:  # agent might use only the file name without path
+                if s.resource_name not in r.path:  # agent might use only file name without path
                     raise ValueError("Mismatched file names")
                 # if the strategy is to use RAG then check if we need to override the
                 # agent's recommendation based on the file type/content.
