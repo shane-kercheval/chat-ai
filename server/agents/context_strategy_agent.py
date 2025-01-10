@@ -83,7 +83,7 @@ class ResourceContextFunction:
                     name='resource_name',
                     type='string',
                     required=True,
-                    description='The full name and path of the resource to get context from, including extension',  # noqa: E501
+                    description='The resource name being considered. This should return the *exact* resource name that was provided (without spacing or "`" or quotes).',  # noqa: E501
                 ),
                 Parameter(
                     name='retrieval_strategy',
@@ -155,7 +155,7 @@ class ContextStrategyAgent:
                         # unpack all key-value pairs from last message
                         **messages[-1],
                         # update the content with the resource name
-                        'content': f"{messages[-1]['content']}\n\nResource: {resource_name}",
+                        'content': f"{messages[-1]['content']}\n\nResource name: `{resource_name}`",  # noqa: E501
                     },
                 ],
                 tool_choice='required',

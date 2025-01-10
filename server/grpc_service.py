@@ -790,13 +790,19 @@ class ContextService(chat_pb2_grpc.ContextServiceServicer):
     ) -> chat_pb2.ContextResponse:
         """Get context for the given resources."""
         try:
-            logging.info(f"Getting context for resources: {request}")
-            logging.info(f"rag_max_k has value: {request.HasField('rag_max_k')}")
+            logging.info("Getting context for resources:")
+            for resource in request.resources:
+                logging.info(f"Resource: {resource.path} ({resource.type})")
+
             query = request.rag_query if request.HasField('rag_query') else None
             sim_threshold = request.rag_similarity_threshold if request.HasField('rag_similarity_threshold') else None  # noqa: E501
             max_k = request.rag_max_k if request.HasField('rag_max_k') else None
             max_content_length = request.max_content_length if request.HasField('max_content_length') else None  # noqa: E501
             strategy = request.context_strategy if request.HasField('context_strategy') else None
+            logging.info(f"Context Strategy: {strategy}")
+            logging.info(f"RAG Similarity Threshold: {sim_threshold:.2f}")
+            logging.info(f"RAG Max K: {max_k}")
+            logging.info(f"Max Content Length: {max_content_length:,} characters")
             context_str, context_types = await self.resource_manager.create_context(
                 resources=request.resources,
                 query=query,

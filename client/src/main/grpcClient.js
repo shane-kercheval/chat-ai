@@ -7,12 +7,13 @@ const {
 const { Empty } = require('google-protobuf/google/protobuf/empty_pb');
 const { 
     ChatRequest, 
-    ChatMessage, 
+    ChatMessage,
     ModelConfig,
     ModelParameters,
     AddResourceRequest,
     Resource,
     ResourceType,
+    ContextStrategy,
     EventStreamRequest,
     DeleteConversationRequest,
     SaveModelConfigRequest,
@@ -27,7 +28,7 @@ const completion_client = new CompletionServiceClient('localhost:50051', grpc.cr
 const context_client = new ContextServiceClient('localhost:50051', grpc.credentials.createInsecure());
 const config_client = new ConfigurationServiceClient('localhost:50051', grpc.credentials.createInsecure());
 
-function sendChatRequest(conversationId, modelConfigs, messageText, instructions = [], resources = []) {
+function sendChatRequest(conversationId, modelConfigs, messageText, instructions = [], resources = [], contextStrategy = null) {
     // Create the chat message
     const chatMessage = new ChatMessage();
     chatMessage.setRole(1); // USER role
@@ -58,11 +59,13 @@ function sendChatRequest(conversationId, modelConfigs, messageText, instructions
     const chatResources = resources.map(resource => {
         const chatResource = new Resource();
         chatResource.setPath(resource.path);
-        chatResource.setType(getResourceType(resource.type));
+        chatResource.setType(convertResourceType(resource.type));
         return chatResource;
     });
     request.setResourcesList(chatResources);
-
+    if (contextStrategy) {
+        request.setContextStrategy(convertContextStrategy(contextStrategy));
+    }
     return completion_client.chat(request);
 }
 
@@ -70,8 +73,7 @@ function addResource(path, type) {
     return new Promise((resolve, reject) => {
         const request = new AddResourceRequest();
         request.setPath(path);
-        request.setType(getResourceType(type));
-        
+        request.setType(convertResourceType(type));
         context_client.add_resource(request, (error, response) => {
             if (error) {
                 console.error('Error adding resource:', error);
@@ -83,7 +85,7 @@ function addResource(path, type) {
     });
 }
 
-function getResourceType(type) {
+function convertResourceType(type) {
     switch(type.toUpperCase()) {
         case 'FILE':
             return ResourceType.FILE;
@@ -93,6 +95,19 @@ function getResourceType(type) {
             return ResourceType.WEBPAGE;
         default:
             throw new Error(`Unknown resource type: ${type}`);
+    }
+}
+
+function convertContextStrategy(strategy) {
+    switch(strategy.toUpperCase()) {
+        case 'AUTO':
+            return ContextStrategy.AUTO;
+        case 'RAG':
+            return ContextStrategy.RAG;
+        case 'FULL TEXT':
+            return ContextStrategy.FULL_TEXT;
+        default:
+            throw new Error(`Unknown context strategy: ${strategy}`);
     }
 }
 

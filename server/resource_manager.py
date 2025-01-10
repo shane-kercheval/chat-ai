@@ -439,7 +439,9 @@ class ResourceManager:
             context_types_used = []
             for s, r in zip(summary.strategies, resources, strict=True):
                 if s.resource_name not in r.path:  # agent might use only file name without path
-                    raise ValueError("Mismatched file names")
+                    logging.error(f"Mismatched file names: `{s.resource_name}` vs `{r.path}`")
+                    logging.error(f"Mismatch - Provided Resources: {[r.path for r in resources]}")
+                    logging.error(f"Mismatch - Returned Strategies: {summary.strategies}")
                 # if the strategy is to use RAG then check if we need to override the
                 # agent's recommendation based on the file type/content.
                 if s.context_type == ContextType.RAG and use_full_text(r):

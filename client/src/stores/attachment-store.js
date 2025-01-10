@@ -10,6 +10,7 @@ export class AttachmentStore extends EventEmitter {
             instructions: new Map(),
             contexts: new Map()
         };
+        this.contextStrategy = 'Auto';
     }
 
     addAttachment(type, { key, value }) {
@@ -41,6 +42,14 @@ export class AttachmentStore extends EventEmitter {
         }
         this.attachments[type].clear();
         this.emit(`${type}:cleared`);
+    }
+
+    setContextStrategy(strategy) {
+        this.contextStrategy = strategy;
+    }
+
+    getContextStrategy() {
+        return this.contextStrategy;
     }
 
     static getInstance() {

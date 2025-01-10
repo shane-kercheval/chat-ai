@@ -2,7 +2,7 @@
 
 Start a new conversation by typing a message below.
 
-Press `Enter` to send a message, `Shift+Enter` for a new line. `Command | Cntl` + `N` starts a new conversation (or `+` icon in History).
+Press `Enter` to send a message, `Shift+Enter` for a new line. `Command | Cntl` + `n` starts a new conversation (or `+` icon in History).
 
 You can:
 * Generate responses from multiple models by selecting models from either the `Model Configurations` section or the "attachment" section by the `Send` button
@@ -36,3 +36,9 @@ Prompts are predefined instructions for the LLM for a specific usecase like summ
 `Instructions` are predefined text given to the model that give it insight into how it should respond. For example, instructions can specify that the model should give intuitive explanations, or can specify various characteristics of the code that is generated (e.g. libraries to prefer).
 
 ---
+
+## Shortcuts
+
+- Start a new conversation: `Command | Cntl` + `n`
+- Toggle sidebar: `Cmmand | Cntl` + `b`
+- Open "Add Attachment" & Search: `Cmmand | Cntl` + `shift` + `a`

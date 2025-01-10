@@ -138,13 +138,14 @@ export class IpcService {
         }
     }
 
-    async sendMessage(messageText, modelConfigs, conversationId = null, instructions = [], resources = []) {
+    async sendMessage(messageText, modelConfigs, conversationId = null, instructions = [], resources = [], contextStrategy = null) {
         return this.ipcRenderer.invoke('send-message',
             messageText,
             modelConfigs,
             conversationId,
             instructions,
-            resources
+            resources,
+            contextStrategy
         );
     }
 
