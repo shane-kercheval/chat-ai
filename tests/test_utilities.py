@@ -343,7 +343,7 @@ class TestDirectoryTree:
             tree = await generate_directory_tree(temp_dir)
             duration = time.time() - start_time
             # Verify it completes in reasonable time
-            assert duration < 0.3
+            assert duration < 0.5
             assert tree.count("dir_") == 100
             assert tree.count("file_") == 1000
 

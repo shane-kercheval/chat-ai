@@ -11,12 +11,12 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-
+    env:
+      SKIP_CI_TESTS: "true"
     strategy:
       matrix:
         # Run in all these versions of Python
         python-version: ['3.12']
-
     steps:
         # Checkout the latest code from the repo
       - name: Checkout repo

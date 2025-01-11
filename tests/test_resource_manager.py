@@ -14,7 +14,7 @@ from proto.generated import chat_pb2
 from server.agents.context_strategy_agent import ContextType
 from server.resource_manager import ResourceManager, ResourceNotFoundError, ContextStrategy
 from server.vector_db import SimilarityScorer
-from tests.conftest import create_temp_file
+from tests.conftest import SKIP_CI, create_temp_file
 
 def create_temp_db_path() -> str:
     """Create a temporary database file."""
@@ -750,6 +750,7 @@ class TestWebpageResources:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
 
+    @SKIP_CI  # arxiv times out in CI
     async def test__add_resource__arxiv_pdf__success(self):
         """Test successfully adding an arXiv PDF as a webpage resource."""
         db_path = create_temp_db_path()
@@ -795,7 +796,7 @@ class TestWebpageResources:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
 
-
+    @SKIP_CI  # arxiv times out in CI
     async def test__concurrent_arxiv_fetches(self):
         """Test handling of concurrent arXiv PDF resource requests."""
         db_path = create_temp_db_path()
@@ -831,6 +832,7 @@ class TestWebpageResources:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
 
+    @SKIP_CI  # arxiv times out in CI
     async def test__invalid_arxiv_pdf_url(self):
         """Test handling of invalid arXiv PDF URLs."""
         db_path = create_temp_db_path()
