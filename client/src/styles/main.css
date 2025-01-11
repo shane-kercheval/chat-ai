@@ -449,23 +449,31 @@ button:hover {
     display: flex;
     flex-direction: column;
     gap: 5px;
-    width: 100px;
+    width: 70px;
     flex-shrink: 0;
 }
 
 .button-stack button {
+    background: #f8f9fa;
+    border: none;
+    color: #1976d2;
     height: 34px;
-    padding: 0 16px;
+    padding: 0 8px;
+    border-radius: 4px;
     display: inline-block;
     width: 100%;
 }
 
+.button-stack button:hover {
+    background: rgba(25, 118, 210, 0.10);
+}
+
 #cancel-button {
-    background: #d32f2f;
+    color: #d32f2f;  /* Red for Cancel */
 }
 
 #cancel-button:hover {
-    background: #b71c1c;
+    background: rgba(211, 47, 47, 0.10);
 }
 
 #history-list {
@@ -1387,10 +1395,115 @@ code {
 }
 
 .attachment-buttons {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 32px 32px;
+    grid-template-rows: 32px 32px;
     gap: 2px;
-    float: left;
+}
+
+/* Base styles for all attachment buttons */
+.add-attachment-button,
+.clear-attachments-button,
+.context-strategy-button,
+.web-search-button {
+    background: none !important;
+    border: none;
+    color: #666;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    position: relative;
+}
+
+.add-attachment-button:hover,
+.clear-attachments-button:hover,
+.context-strategy-button:hover,
+.web-search-button:hover {
+    background: rgba(0,0,0,0.05) !important;
+}
+
+/* SVG styles for all buttons */
+.add-attachment-button svg,
+.clear-attachments-button svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+}
+
+.context-strategy-button svg,
+.web-search-button svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+}
+
+/* Tooltip styles */
+.add-attachment-button .icon-tooltip,
+.clear-attachments-button .icon-tooltip,
+.context-strategy-button .icon-tooltip,
+.web-search-button .icon-tooltip {
+    position: absolute;
+    left: calc(100% + 4px);
+    top: 50%;
+    transform: translateY(-50%);
+    background: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    display: none;
+    white-space: nowrap;
+    border: 1px solid #ddd;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.add-attachment-button:hover .icon-tooltip,
+.clear-attachments-button:hover .icon-tooltip,
+.context-strategy-button:hover .icon-tooltip,
+.web-search-button:hover .icon-tooltip {
+    display: block;
+}
+
+/* Context strategy button states */
+.context-strategy-button[data-strategy="Auto"] {
+    color: #1976d2;
+    background: rgba(25, 118, 210, 0.05) !important;
+}
+
+.context-strategy-button[data-strategy="RAG"] {
+    color: #4caf50;
+    background: rgba(76, 175, 80, 0.05) !important;
+}
+
+.context-strategy-button[data-strategy="Full Text"] {
+    color: #f44336;
+    background: rgba(244, 67, 54, 0.05) !important;
+}
+
+/* Web search active state */
+.web-search-button.active {
+    color: #1976d2;
+    background: rgba(25, 118, 210, 0.05) !important;
+}
+
+/* Animation for state changes */
+.context-strategy-button svg,
+.web-search-button svg {
+    transition: transform 0.2s;
+}
+
+.context-strategy-button:active svg,
+.web-search-button:active svg {
+    transform: scale(0.9);
 }
 
 .files-section {
@@ -1648,43 +1761,6 @@ code {
 .attachment-item[data-type="model-config"]::before {
     background: #ce93d8;
     color: #6a1b9a;
-}
-
-.add-attachment-button {
-    background: none !important;
-    border: none;
-    color: #666;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    order: -1;
-}
-
-.add-attachment-button:hover {
-    background: rgba(0,0,0,0.05) !important;
-}
-
-.clear-attachments-button {
-    background: none !important;
-    border: none;
-    color: #666;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-}
-
-.clear-attachments-button:hover {
-    background: rgba(0,0,0,0.05) !important;
 }
 
 

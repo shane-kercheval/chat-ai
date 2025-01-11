@@ -14,7 +14,7 @@ CODE_EXTENSIONS = {
     '.java', '.rs', '.go', '.swift', '.kt', '.rb', '.php', '.scala',
     '.sql', '.sh', '.bash', '.json', '.yaml', '.yml', '.toml', '.jsx',
     '.tsx', '.vue', '.dart', '.r', '.m', '.f90', '.f95', '.f03', '.xml',
-    '.jsp', '.asp', '.aspx', '.bat', '.ps1', '.ini', '.cfg', '.env', '.md',
+    '.jsp', '.asp', '.aspx', '.bat', '.ps1', '.ini', '.cfg', '.env',
     '.conf', '.csx', '.gradle', '.properties', '.ipynb', '.pyo', '.pyc',
     '.erb', '.zsh', '.ksh', '.cmake', '.pl', '.perl', '.lua', '.groovy',
     '.coffee', '.svelte', '.astro', '.rmd', '.lock',

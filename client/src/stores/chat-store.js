@@ -129,13 +129,15 @@ export class ChatStore extends EventEmitter {
             const contextResources = attachedContexts.flatMap(context => context.resources);
             // Combine all resources
             const allResources = [...attachedResources, ...contextResources];
+            const contextStrategy = this.attachmentStore.getContextStrategy();
             
             await this.ipcService.sendMessage(
                 content, 
                 modelConfigs, 
                 this.currentConversationId,
                 allInstructions,
-                allResources
+                allResources,
+                contextStrategy
             );
         } catch (error) {
             this.emit('error', error);

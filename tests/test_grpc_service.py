@@ -11,6 +11,7 @@ import grpc
 from sentence_transformers import SentenceTransformer
 import yaml
 from typing import Optional
+from server.resource_manager import ContextStrategy
 from tests.conftest import create_temp_file
 from proto.generated import chat_pb2, chat_pb2_grpc
 from google.protobuf import empty_pb2
@@ -35,6 +36,7 @@ SUPPORTED_MODELS_PATH = str(PROJECT_ROOT / 'artifacts/supported_models.yaml')
 DEFAULT_MODEL_CONFIGS_PATH = str(PROJECT_ROOT / 'artifacts/default_model_configs.yaml')
 
 OPENAI_MODEL_NAME = 'gpt-4o-mini'
+CONTEXT_STRATEGY_MODEL_NAME = 'gpt-4o'
 ANTHROPIC_MODEL_NAME = 'claude-3-5-haiku-latest'
 
 EXPECTED_NUMBER_OF_CONFIGS = None
@@ -45,6 +47,7 @@ with open(SUPPORTED_MODELS_PATH) as f:
 # this takes a few seconds to load so let's load it once
 EMBEDDING_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
 CHUNK_SIZE = 500
+RAG_CHAR_THRESHOLD = 1000
 
 def get_default_model_config(api_key_name: str) -> chat_pb2:
     """Get the default model config for a API KEY name."""
@@ -98,6 +101,8 @@ async def grpc_server(temp_sqlite_db_path):  # noqa: ANN001
         database_uri=temp_sqlite_db_path,
         num_workers=2,
         rag_scorer=SimilarityScorer(EMBEDDING_MODEL, chunk_size=CHUNK_SIZE),
+        rag_char_threshold=RAG_CHAR_THRESHOLD,
+        context_strategy_model=CONTEXT_STRATEGY_MODEL_NAME,
     ))
     await context_service.initialize()
 
@@ -1881,6 +1886,7 @@ class TestContextService:
                             type=chat_pb2.ResourceType.DIRECTORY,
                         ),
                     ],
+                    context_strategy=ContextStrategy.RAG,
                 ))
 
                 # Check both file and directory content present
@@ -1957,6 +1963,7 @@ class TestContextService:
                 rag_query="What is machine learning?",
                 rag_similarity_threshold=0.3,
                 rag_max_k=2,
+                context_strategy=ContextStrategy.RAG,
             ))
             # allow for 2 matched chunks plus 1 overlap + extra
             assert len(response.context) <= CHUNK_SIZE * 4
@@ -1968,6 +1975,109 @@ class TestContextService:
             Path(file1_path).unlink(missing_ok=True)
             Path(file2_path).unlink(missing_ok=True)
 
+    async def test__get_context__with_context_strategy_full_text(self, grpc_channel):  # noqa: ANN001
+        """Test that FULL_TEXT strategy uses full content for all resources."""
+        try:
+            file_path = create_temp_file("Machine learning concepts.\n" * RAG_CHAR_THRESHOLD)
+            stub = chat_pb2_grpc.ContextServiceStub(grpc_channel)
+            await stub.add_resource(chat_pb2.AddResourceRequest(
+                path=file_path,
+                type=chat_pb2.ResourceType.FILE,
+            ))
+            response = await stub.get_context(chat_pb2.ContextRequest(
+                resources=[
+                    chat_pb2.Resource(path=file_path, type=chat_pb2.ResourceType.FILE),
+                ],
+                rag_query="What is machine learning?",
+                rag_similarity_threshold=1.0,
+                context_strategy=chat_pb2.ContextStrategy.FULL_TEXT,
+            ))
+            assert file_path in response.context
+            assert "Machine learning concepts" in response.context
+            assert file_path in response.context_types
+            assert response.context_types[file_path] == chat_pb2.ContextResponse.ContextType.FULL_TEXT  # noqa: E501
+
+            # Test max_content_length
+            response = await stub.get_context(chat_pb2.ContextRequest(
+                resources=[
+                    chat_pb2.Resource(path=file_path, type=chat_pb2.ResourceType.FILE),
+                ],
+                rag_query="What is machine learning?",
+                rag_similarity_threshold=1.0,
+                context_strategy=chat_pb2.ContextStrategy.FULL_TEXT,
+                max_content_length=10,
+            ))
+            assert len(response.context) == 10
+            assert file_path in response.context_types
+            assert response.context_types[file_path] == chat_pb2.ContextResponse.ContextType.FULL_TEXT  # noqa: E501
+        finally:
+            Path(file_path).unlink(missing_ok=True)
+
+    async def test__get_context__with_context_strategy_rag(self, grpc_channel):  # noqa: ANN001
+        try:
+            # Create file with content above the RAG threshold
+            content = "This text talks about machine learning.\n" * RAG_CHAR_THRESHOLD
+            file_path = create_temp_file(content)
+
+            stub = chat_pb2_grpc.ContextServiceStub(grpc_channel)
+            await stub.add_resource(chat_pb2.AddResourceRequest(
+                path=file_path,
+                type=chat_pb2.ResourceType.FILE,
+            ))
+            response = await stub.get_context(chat_pb2.ContextRequest(
+                resources=[chat_pb2.Resource(path=file_path, type=chat_pb2.ResourceType.FILE)],
+                rag_query="What is machine learning?",
+                context_strategy=chat_pb2.ContextStrategy.RAG,
+            ))
+            assert file_path in response.context
+            assert "machine learning" in response.context
+            assert file_path in response.context_types
+            assert response.context_types[file_path] == chat_pb2.ContextResponse.ContextType.RAG
+        finally:
+            Path(file_path).unlink(missing_ok=True)
+
+    async def test__get_context__with_context_strategy_auto(self, grpc_channel):  # noqa: ANN001
+        """Test AUTO strategy with mixed file types."""
+        try:
+            # Create markdown and code files
+            readme_content = "# Project Overview\n" * 100
+            readme_path = create_temp_file(readme_content, prefix="Project Overview", suffix='.md')
+
+            code_content = "css stuff" * 10
+            code_path = create_temp_file(code_content, prefix="login_page", suffix='.css')
+
+            stub = chat_pb2_grpc.ContextServiceStub(grpc_channel)
+            for path in [readme_path, code_path]:
+                await stub.add_resource(chat_pb2.AddResourceRequest(
+                    path=path,
+                    type=chat_pb2.ResourceType.FILE,
+                ))
+
+            response = await stub.get_context(chat_pb2.ContextRequest(
+                resources=[
+                    chat_pb2.Resource(path=readme_path, type=chat_pb2.ResourceType.FILE),
+                    chat_pb2.Resource(path=code_path, type=chat_pb2.ResourceType.FILE),
+                ],
+                rag_query="Summarize this project?",
+                rag_similarity_threshold=0.1,
+                context_strategy=chat_pb2.ContextStrategy.AUTO,
+            ))
+
+            # Verify strategies are returned
+            assert readme_path in response.context_types
+            assert code_path in response.context_types
+            # For documentation query, readme should be RAG or FULL_TEXT
+            assert response.context_types[readme_path] in [
+                chat_pb2.ContextResponse.ContextType.RAG,
+                chat_pb2.ContextResponse.ContextType.FULL_TEXT,
+            ]
+            # Code should be ignored for this query
+            assert response.context_types[code_path] in [
+                chat_pb2.ContextResponse.ContextType.IGNORE,
+            ]
+        finally:
+            Path(readme_path).unlink(missing_ok=True)
+            Path(code_path).unlink(missing_ok=True)
 
 
 @pytest.mark.asyncio

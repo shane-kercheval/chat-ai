@@ -1,5 +1,6 @@
 import { EventEmitter } from '../utils/event-emitter.js';
 import { UIManager } from '../utils/ui-utils.js';
+import { AttachmentStore } from '../stores/attachment-store.js';
 
 export class AttachmentManager extends EventEmitter {
 
@@ -11,6 +12,8 @@ export class AttachmentManager extends EventEmitter {
 
     constructor() {
         super();
+        this.contextStrategy = 'Auto';
+        this.webSearchEnabled = false;
         this.elements = {
             searchBox: document.getElementById('search-box'),
             searchResults: document.getElementById('search-results'),
@@ -21,29 +24,13 @@ export class AttachmentManager extends EventEmitter {
         // Only set up the shared handlers once (this constructor is called for each subclass)
         if (!AttachmentManager.handlersInitialized) {
             this.setupSharedHandlers();
+            this.setupKeyboardShortcuts();
             AttachmentManager.handlersInitialized = true;
         }
-
         this.setupClearHandler();
+        this.setupStrategyHandler();
+        this.setupWebSearchHandler();
         AttachmentManager.registerSearchProvider(this);
-    }
-
-    setupClearHandler() {
-        if (this.elements.clearButton) {
-            this.elements.clearButton.addEventListener('click', () => {
-                if (this.elements.attachedItems) {
-                    this.clearAttachments();
-                }
-            });
-        }
-    }
-    
-    clearAttachments() {
-        if (this.elements.attachedItems) {
-            this.elements.attachedItems.innerHTML = '';
-            this.emit('itemsCleared');
-            this.emit('attachmentsChanged'); // Add this if you need to notify about attachment changes
-        }
     }
 
     setupSharedHandlers() {
@@ -83,6 +70,72 @@ export class AttachmentManager extends EventEmitter {
         if (this.elements.searchBox) {
             this.elements.searchBox.addEventListener('input', () => {
                 this.handleSearch();
+            });
+        }
+    }
+
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Command+Shift+A on Mac or Ctrl+Shift+A on Windows/Linux
+            if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'a') {
+                e.preventDefault();  // Prevent default browser behavior
+                const searchContainer = document.getElementById('search-container');
+                searchContainer.style.display = 'block';
+                if (this.elements.searchBox) {
+                    this.elements.searchBox.value = '';
+                    this.elements.searchBox.focus();
+                    this.handleSearch();
+                }
+            }
+        });
+    }
+
+    setupClearHandler() {
+        if (this.elements.clearButton) {
+            this.elements.clearButton.addEventListener('click', () => {
+                if (this.elements.attachedItems) {
+                    this.clearAttachments();
+                }
+            });
+        }
+    }
+
+    clearAttachments() {
+        if (this.elements.attachedItems) {
+            this.elements.attachedItems.innerHTML = '';
+            this.emit('itemsCleared');
+            this.emit('attachmentsChanged'); // Add this if you need to notify about attachment changes
+        }
+    }
+
+    setupStrategyHandler() {
+        const strategyButton = document.querySelector('.context-strategy-button');
+        strategyButton.dataset.strategy = this.contextStrategy;
+        if (strategyButton) {
+            strategyButton.addEventListener('click', () => {
+                // Cycle through strategies
+                const strategies = ['Auto', 'RAG', 'Full Text'];
+                const currentIndex = strategies.indexOf(this.contextStrategy);
+                this.contextStrategy = strategies[(currentIndex + 1) % strategies.length];
+                // Update button state
+                strategyButton.dataset.strategy = this.contextStrategy;
+                // Update tooltip text
+                const tooltip = strategyButton.querySelector('.icon-tooltip');
+                if (tooltip) {
+                    tooltip.textContent = `Context Strategy: ${this.contextStrategy}`;
+                }
+                AttachmentStore.getInstance().setContextStrategy(this.contextStrategy);
+            });
+        }
+    }
+
+    setupWebSearchHandler() {
+        const webSearchButton = document.querySelector('.web-search-button');
+        if (webSearchButton) {
+            webSearchButton.addEventListener('click', () => {
+                this.webSearchEnabled = !this.webSearchEnabled;
+                webSearchButton.classList.toggle('active', this.webSearchEnabled);
+                UIManager.showNotification('Not Implemented.', 'error');
             });
         }
     }
