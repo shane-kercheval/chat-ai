@@ -800,9 +800,12 @@ class ContextService(chat_pb2_grpc.ContextServiceServicer):
             max_content_length = request.max_content_length if request.HasField('max_content_length') else None  # noqa: E501
             strategy = request.context_strategy if request.HasField('context_strategy') else None
             logging.info(f"Context Strategy: {strategy}")
-            logging.info(f"RAG Similarity Threshold: {sim_threshold:.2f}")
-            logging.info(f"RAG Max K: {max_k}")
-            logging.info(f"Max Content Length: {max_content_length:,} characters")
+            if sim_threshold is not None:
+                logging.info(f"RAG Similarity Threshold: {sim_threshold:.2f}")
+            if max_k is not None:
+                logging.info(f"RAG Max K: {max_k}")
+            if max_content_length is not None:
+                logging.info(f"Max Content Length: {max_content_length:,} characters")
             context_str, context_types = await self.resource_manager.create_context(
                 resources=request.resources,
                 query=query,

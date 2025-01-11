@@ -46,25 +46,27 @@ class ContextStrategySummary:
 
 
 FUNCTION_DESCRIPTION = dedent("""
-- This function returns the "context" from a resource (e.g. a file, directory, webpage, etc.). The context is given to an LLM for answering a specific quetion.
-- The relevance of a resource is based on the question asked and using only the name of the resource. You must infer the contents of the resource based on the name of the resource.
+Determine which context strategy (ignore, retrieve_full, or retrieve_relevant) is required for each resource to answer a question.
+- Use `ignore` if the resource is unnecessary to answer the question.
+- Use `retrieve_full` if the entire resource content is needed (e.g., summarization, outlining, or when semantic search isn't suitable like in code or CSV).
+- Use `retrieve_relevant` to extract specific relevant sections (e.g., for targeted or topical questions).
+- If the user specifies a resource, only consider that resource.
+- Infer resource relevance based on its name alone, even without content visibility.
+""").strip()  # noqa: E501
+
+RESOURCE_NAME_PARAMETER_DESCRIPTION = dedent("""
+The name of the resource currently being evaluated. Must return the exact name of this resource without additional formatting (e.g., no spaces, quotes, or backticks). Ignore resource names mentioned in the user's message; evaluate only the resource explicitly specified in this context."
+
+The name of the resource currently being evaluated to determine its relevance and how context should be extracted, if needed. This refers to the specific resource being considered and referenced in the "Resource name being considered:" section, not any resources mentioned by the user in their question. The name must exactly match the resource being evaluated (no extra formatting such as spaces, quotes, or backticks)."
 """).strip()  # noqa: E501
 
 
-PARAMETER_DESCRIPTION = dedent("""
+STRATEGY_PARAMETER_DESCRIPTION = dedent("""
 Determines the context that will be extracted from a resource.
 
-- We should ignore resoures if the resource is not needed to **directly** address the question.
-- We should carefully determine if a resource is needed and avoid using unnecessary resources.
-    - For example, for code resources, if the user asks a question about the server, then client resources probably aren't needed. Or if the user asks a UI question, then server resources probably aren't needed.
-    - If the user asks a question that is likely to be found in the readme, then we don't need to include the code files/resources.
-    - The one exception is that if the user is a pdf with an obscure name, it could be a research paper that could be relevant, and we should use it.
-- If the resource is needed to answer the question, we need to determine the context that should be extracted from the resource (either the entire/full resource or only relevant sections).
-- We need to pass in `ignore` if the resource is not needed, `retrieve_full` if the entire resource is needed, or `retrieve_relevant` if we need to use semantic search to get relevant sections.
-
-- `ignore`: The resource is not needed to **directly** answer the question.
-- `retrieve_full`: The resource is needed to answer the question, and the entire resource content should be retrieved. For example, the entire resource is needed if the user asked to summarize the resource, or to create an outline, an overview, etc.. Or, for example, if the resource type isn't appropriate for semantic search (e.g. code, .csv, etc.), then the entire resource should be retrieved.
-- `retrieve_relevant`: The resource is needed to answer the question, but only relevant sections should be retrieved. For example, if the user asks a question about a specific topic and the answer is likely contained in a specific passage, then only the relevant sections of the resource should be retrieved.
+- `ignore`: The resource is probably irrelevant to the question. For example, for code resources, if the user asks a question about the server, then the client resources probably aren't needed and should be ignored. Or if the user asks a UI question, then server resources probably aren't needed. Or for example, if the user asks a question that is likely to be found in the readme, then we don't need to include the code files/resources.
+- `retrieve_full`: Retrieve the entire resource if the full content probably is necessary to answer the question (e.g., summarization, outlines, or like code or CSV that are not suitable for semantic search).
+- `retrieve_relevant`: Extract specific relevant sections if the question targets specific topics or information within the resource.
 """).strip()  # noqa: E501
 
 
@@ -83,13 +85,13 @@ class ResourceContextFunction:
                     name='resource_name',
                     type='string',
                     required=True,
-                    description='The resource name being considered. This should return the *exact* resource name that was provided (without spacing or "`" or quotes).',  # noqa: E501
+                    description=RESOURCE_NAME_PARAMETER_DESCRIPTION,
                 ),
                 Parameter(
                     name='retrieval_strategy',
                     type='string',
                     required=True,
-                    description=PARAMETER_DESCRIPTION,
+                    description=STRATEGY_PARAMETER_DESCRIPTION,
                     enum=[
                         'ignore',
                         'retrieve_full',
@@ -143,26 +145,19 @@ class ContextStrategyAgent:
             resource_names:
                 List of resource names to get context strategies for.
         """
-        # Get responses for each resource concurrently
         messages = deepcopy(messages)
         # remove system messages from user inut since that will confuse the agent
         messages = [m for m in messages if m['role'] != 'system']
         responses = await asyncio.gather(*(
             self.wrapper(
                 messages=[
-                    *messages[:-1],  # Keep all messages except the last one
-                    {
-                        # unpack all key-value pairs from last message
-                        **messages[-1],
-                        # update the content with the resource name
-                        'content': f"{messages[-1]['content']}\n\nResource name: `{resource_name}`",  # noqa: E501
-                    },
+                    *messages,  # Keep all messages
+                    {'role': 'user', 'content': f"Resource name being considered: `{resource_name}`"},  # noqa: E501
                 ],
                 tool_choice='required',
             )
             for resource_name in resource_names
         ))
-
         strategies = [
             ContextStrategyResult(
                 resource_name=r.function_call.arguments['resource_name'],

@@ -111,10 +111,50 @@ class TestRetrievalStrategies:
             agent(messages=messages, resource_names=files)
             for _ in range(sample_size)
         ))
-        # [s.results[1].arguments for s in summaries]
-        for i in range(len(expected_strategies)):
-            assert sum(s.strategies[i].resource_name in expected_strategies for s in summaries) >= pass_threshold  # noqa: E501
-            assert sum(s.strategies[i].context_type in expected_strategies[s.strategies[i].resource_name] for s in summaries) >= pass_threshold  # noqa: E501
+        # [s.strategies[i].resource_name for s in summaries]
+        # [s.strategies[i].context_type for s in summaries]
+        for i, (expected_name, expected_strategy) in enumerate(expected_strategies.items()):
+            assert sum(s.strategies[i].resource_name == expected_name for s in summaries) >= pass_threshold  # noqa: E501
+            assert sum(s.strategies[i].context_type in expected_strategy for s in summaries) >= pass_threshold  # noqa: E501
+
+
+    @pytest.mark.parametrize('test_case', [
+        pytest.param(
+            {
+                # UI question should use UI file and ignore server
+                'question': 'Give a code review for `grpc_api_service.py`.',
+                'files': ['client_login_ui.tsx', 'grpc_api_service.py', 'main.css', 'attention_is_all_you_need.pdf'],  # noqa: E501
+                'expected_strategies': {
+                    'client_login_ui.tsx': [ContextType.IGNORE],
+                    'grpc_api_service.py': [ContextType.FULL_TEXT],
+                    'main.css': [ContextType.IGNORE],
+                    'attention_is_all_you_need.pdf': [ContextType.IGNORE],
+                },
+            },
+            id='grpc_api_service',
+        ),
+    ])
+    async def test_code_file_handling__file_name_is_mentioned_by_user(
+            self,
+            test_case: dict,
+        ):
+        """Test handling of code files with multiple runs."""
+        sample_size = 10
+        pass_threshold = 5
+        messages = [{"role": "user", "content": test_case["question"]}]
+        files = test_case["files"]
+        expected_strategies = test_case["expected_strategies"]
+        agent = ContextStrategyAgent(model=TEST_MODEL)
+        summaries = await asyncio.gather(*(
+            agent(messages=messages, resource_names=files)
+            for _ in range(sample_size)
+        ))
+        # [s.strategies[i].resource_name for s in summaries]
+        # [s.strategies[i].context_type for s in summaries]
+        for i, (expected_name, expected_strategy) in enumerate(expected_strategies.items()):
+            assert sum(s.strategies[i].resource_name == expected_name for s in summaries) >= pass_threshold  # noqa: E501
+            assert sum(s.strategies[i].context_type in expected_strategy for s in summaries) >= pass_threshold  # noqa: E501
+
 
     @pytest.mark.parametrize('test_case', [
         pytest.param(
@@ -177,7 +217,8 @@ class TestRetrievalStrategies:
             agent(messages=messages, resource_names=files)
             for _ in range(sample_size)
         ))
-        # [s.strategies[0] for s in summaries]
-        for i in range(len(expected_strategies)):
-            assert sum(s.strategies[i].resource_name in expected_strategies for s in summaries) >= pass_threshold  # noqa: E501
-            assert sum(s.strategies[i].context_type in expected_strategies[s.strategies[i].resource_name] for s in summaries) >= pass_threshold  # noqa: E501
+        # [s.strategies[i].resource_name for s in summaries]
+        # [s.strategies[i].context_type for s in summaries]
+        for i, (expected_name, expected_strategy) in enumerate(expected_strategies.items()):
+            assert sum(s.strategies[i].resource_name == expected_name for s in summaries) >= pass_threshold  # noqa: E501
+            assert sum(s.strategies[i].context_type in expected_strategy for s in summaries) >= pass_threshold  # noqa: E501
