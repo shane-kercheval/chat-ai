@@ -214,7 +214,7 @@ class AsyncOpenAICompletionWrapper(BaseModelWrapper):
 class Parameter:
     """
     Represents a parameter property in a function's schema.
-    
+
     Supported types
         The following types are supported for Structured Outputs:
 
