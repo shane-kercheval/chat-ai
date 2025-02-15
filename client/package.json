@@ -20,6 +20,7 @@
     "grpc-tools": "^1.12.4",
     "highlight.js": "^11.10.0",
     "js-yaml": "^4.1.0",
+    "katex": "^0.16.8",
     "marked": "^15.0.4"
   }
 }
