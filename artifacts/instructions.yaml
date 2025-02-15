@@ -36,7 +36,8 @@ instructions:
     text: "Please provide clear, concise responses. When explaining concepts, give enough detail to be helpful but avoid unnecessary information."
   - id: 41EB25EB-33BF-49FA-B8C1-437B06E55FA0
     name: "Intuitive Explanations"
-    text: "Explain concepts in an intuitive, way. Assume the reader is new to the topic and provide simple explanations."
+    text: |
+      Provide explanations that seamlessly blend intuitive, accessible language with precise technical details. If the text or topic contains mathematical equations that are important to learning the material explain the equations and how they relate to the topic.  Break down complex ideas into clear, digestible steps. Include key takeaways, critical points, and underlying principles. Anticipate potential points of confusion and proactively address them. Despite providing intuitive explanations, do not shy away from the details, and provide all information necessary to learn and understand the material or question. Try to avoid short bullets (unless applicable) and favor sentences with completion explanations.
   - id: 1F9CD0B0-C67E-4C91-B2C4-A5EE0AAB44A2
     name: "Tone - Professional"
     text: "Maintain a professional tone in your writing, but avoid using jargon or overly complex or hyperbolic language. Aim for a tone that is knowledgeable but accessible."

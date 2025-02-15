@@ -1,5 +1,6 @@
 const marked = require('marked');
 const hljs = require('highlight.js');
+const renderMathInElement = require('katex/dist/contrib/auto-render.js');
 import { UIManager } from '../utils/ui-utils.js';
 
 const copy_button_svg = `
@@ -515,6 +516,25 @@ export class ChatView {
         messageDiv.querySelectorAll('pre code').forEach((block) => {
             hljs.highlightElement(block);
         });
+
+        try {
+            renderMathInElement(contentDiv, {
+                delimiters: [
+                    {left: '[', right: ']', display: true},
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                    {left: '\\[', right: '\\]', display: true},
+                    {left: '\\(', right: '\\)', display: false}
+                ],
+                throwOnError: false,
+                strict: false,
+                trust: true,
+                macros: {},
+                output: 'html'
+            });
+        } catch (error) {
+            console.error('KaTeX rendering error:', error);
+        }
     
         setTimeout(() => {
             this.addCopyButtons(messageDiv);
