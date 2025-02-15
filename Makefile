@@ -15,7 +15,7 @@ run: proto electron-proto
 run-server: proto
 	PYTHONPATH=$PYTHONPATH:.:./proto/generated uv run server/grpc_service.py
 
-run-app: electron-proto
+run-client: electron-proto
 	cd client && npm start
 
 proto: clean-proto
@@ -53,7 +53,7 @@ clean: clean-proto
 # Electron
 ####
 electron-setup: electron-clean
-	cd client && npm install
+	cd client && rm -rf node_modules && npm install
 
 electron-proto: proto
 	mkdir -p client/proto/generated
