@@ -1,7 +1,7 @@
 """In-memory registry of supported models loaded from YAML."""
 from proto.generated import chat_pb2
 
-class ModelRegistry:
+class SupportedModels:
     """In-memory registry of supported models loaded from YAML."""
 
     def __init__(self, models: list[dict]):

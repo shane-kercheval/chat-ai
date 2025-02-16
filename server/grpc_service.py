@@ -18,7 +18,7 @@ from proto.generated import chat_pb2, chat_pb2_grpc
 from server.agents.context_strategy_agent import ContextType
 from server.async_merge import AsyncMerge
 from server.model_config_manager import ModelConfigManager
-from server.model_registry import ModelRegistry
+from server.supported_models import SupportedModels
 from server.models import ChatChunkResponse, ChatStreamResponseSummary
 from server.models.base import Model
 # these need to be imported for the models to be registered
@@ -115,7 +115,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             db_path=config.database_uri,
             initial_conversations=config.initial_conversations,
         )
-        self.model_registry = ModelRegistry(models=config.supported_models)
+        self.model_registry = SupportedModels(models=config.supported_models)
         self.event_subscribers = set()  # Track active event streams
         self.channel = config.channel
         self._rag_similarity_threshold = config.rag_similarity_threshold

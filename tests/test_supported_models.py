@@ -1,8 +1,6 @@
 """Test the model registry."""
-
-
 import pytest
-from server.model_registry import ModelRegistry
+from server.supported_models import SupportedModels
 
 
 def test_model_registry():
@@ -49,7 +47,7 @@ def test_model_registry():
             'display_name': 'OpenAI Compatible Server',
         },
     ]
-    registry = ModelRegistry(models)
+    registry = SupportedModels(models)
     assert len(registry.get_supported_models()) == 5
     assert registry.get_supported_models()[0].type == 'OpenAI'
     assert registry.get_supported_models()[0].name == 'gpt-4o-mini'
