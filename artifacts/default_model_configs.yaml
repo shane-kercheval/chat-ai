@@ -2,35 +2,35 @@ default_model_configs:
   - config_id: '7398FE35-5635-4297-A6F6-4AEF5AA88506'
     config_name: 'Quick/Cheap'
     config:
-      model_family: 'OpenAI'
+      model_type: 'OpenAI'
       model_name: 'gpt-4o-mini'
       model_parameters:
         temperature: 0.2
   - config_id: '1BD01FCB-F772-406C-8A0F-2E7629245EF1'
     config_name: 'Coding'
     config:
-      model_family: 'Claude'
+      model_type: 'Anthropic'
       model_name: 'claude-3-5-sonnet-latest'
       model_parameters:
         temperature: 0.1
   - config_id: '0FD8F56C-B9C5-4477-9980-AA5885BBFA08'
     config_name: 'Creative'
     config:
-      model_family: 'Claude'
+      model_type: 'Anthropic'
       model_name: 'claude-3-5-haiku-latest'
       model_parameters:
         temperature: 0.8
   - config_id: '22A58789-1B10-46FA-B552-8DDE14407582'
     config_name: 'General'
     config:
-      model_family: 'OpenAI'
+      model_type: 'OpenAI'
       model_name: 'gpt-4o'
       model_parameters:
         temperature: 0.2
   - config_id: '7187070E-49DD-472F-AD06-F9311EB80C67'
     config_name: 'Local Server'
     config:
-      model_family: 'Local'
+      model_type: 'OpenAI'
       model_name: 'openai-compatible-server'
       model_parameters:
         server_url: http://localhost:1234/v1

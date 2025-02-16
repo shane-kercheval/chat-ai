@@ -31,9 +31,9 @@ def create_temp_db_path():
     return Path(f.name)
 
 
-def create_fake_config_snapshot(model_family: str, model_name: str) -> chat_pb2.ModelConfig:
+def create_fake_config_snapshot(model_type: str, model_name: str) -> chat_pb2.ModelConfig:
     return chat_pb2.ModelConfig(
-        model_family=model_family,
+        model_type=model_type,
         model_name=model_name,
         model_parameters=chat_pb2.ModelParameters(
                 temperature=0.5,
@@ -188,7 +188,7 @@ class TestConversationManager:
             assert stored_messages[0].timestamp is not None
             assert stored_messages[1].single_model_response.message.role == chat_pb2.Role.ASSISTANT
             assert stored_messages[1].single_model_response.message.content == 'Response 1'
-            assert stored_messages[1].single_model_response.config_snapshot.model_family == 'api-test'  # noqa: E501
+            assert stored_messages[1].single_model_response.config_snapshot.model_type == 'api-test'  # noqa: E501
             assert stored_messages[1].single_model_response.config_snapshot.model_name == 'test-model'  # noqa: E501
             assert stored_messages[1].single_model_response.config_snapshot.model_parameters.temperature == pytest.approx(0.5)  # noqa: E501
             assert stored_messages[1].single_model_response.config_snapshot.model_parameters.server_url == 'http://localhost'  # noqa: E501
@@ -200,7 +200,7 @@ class TestConversationManager:
             assert stored_messages[3].multi_model_response.responses[0].model_index == 0
             assert stored_messages[3].multi_model_response.responses[0].message.role == chat_pb2.Role.ASSISTANT  # noqa: E501
             assert stored_messages[3].multi_model_response.responses[0].message.content == 'Response 2-A'  # noqa: E501
-            assert stored_messages[3].multi_model_response.responses[0].config_snapshot.model_family == 'api-test'  # noqa: E501
+            assert stored_messages[3].multi_model_response.responses[0].config_snapshot.model_type == 'api-test'  # noqa: E501
             assert stored_messages[3].multi_model_response.responses[0].config_snapshot.model_name == 'test-model'  # noqa: E501
             assert stored_messages[3].multi_model_response.responses[0].config_snapshot.model_parameters.temperature == pytest.approx(0.5)  # noqa: E501
             assert stored_messages[3].multi_model_response.responses[0].config_snapshot.model_parameters.server_url == 'http://localhost'  # noqa: E501
@@ -208,7 +208,7 @@ class TestConversationManager:
             assert stored_messages[3].multi_model_response.responses[1].model_index == 1
             assert stored_messages[3].multi_model_response.responses[1].message.role == chat_pb2.Role.ASSISTANT  # noqa: E501
             assert stored_messages[3].multi_model_response.responses[1].message.content == 'Response 2-B'  # noqa: E501
-            assert stored_messages[3].multi_model_response.responses[1].config_snapshot.model_family == 'api-test2'  # noqa: E501
+            assert stored_messages[3].multi_model_response.responses[1].config_snapshot.model_type == 'api-test2'  # noqa: E501
             assert stored_messages[3].multi_model_response.responses[1].config_snapshot.model_name == 'test-model2'  # noqa: E501
             assert stored_messages[3].multi_model_response.responses[1].config_snapshot.model_parameters.temperature == pytest.approx(0.5)  # noqa: E501
             assert stored_messages[3].multi_model_response.responses[1].config_snapshot.model_parameters.server_url == 'http://localhost'  # noqa: E501
@@ -425,7 +425,7 @@ class TestConversationManager:
             assert not conv1.entries[1].HasField('chat_message')
             assert conv1.entries[1].single_model_response.message.role == chat_pb2.Role.ASSISTANT
             assert conv1.entries[1].single_model_response.message.content == 'The capital of France is Paris.'  # noqa: E501
-            assert conv1.entries[1].single_model_response.config_snapshot.model_family == 'OpenAI'
+            assert conv1.entries[1].single_model_response.config_snapshot.model_type == 'OpenAI'
             assert conv1.entries[1].single_model_response.config_snapshot.model_name == 'gpt-4o-mini'  # noqa: E501
             assert conv1.entries[1].single_model_response.config_snapshot.model_parameters.HasField('temperature')  # noqa: E501
             assert conv1.entries[1].single_model_response.config_snapshot.model_parameters.temperature == pytest.approx(0.2)  # noqa: E501
@@ -447,7 +447,7 @@ class TestConversationManager:
             assert not conv1.entries[3].HasField('chat_message')
             assert conv1.entries[3].single_model_response.message.role == chat_pb2.Role.ASSISTANT
             assert conv1.entries[3].single_model_response.message.content == 'Paris has a population of about 2.2 million people in the city proper.'  # noqa: E501
-            assert conv1.entries[3].single_model_response.config_snapshot.model_family == 'OpenAI'
+            assert conv1.entries[3].single_model_response.config_snapshot.model_type == 'OpenAI'
             assert conv1.entries[3].single_model_response.config_snapshot.model_name == 'gpt-4o-mini'  # noqa: E501
             assert conv1.entries[3].single_model_response.config_snapshot.model_parameters.HasField('temperature')  # noqa: E501
             assert conv1.entries[3].single_model_response.config_snapshot.model_parameters.temperature == pytest.approx(0.2)  # noqa: E501
@@ -476,7 +476,7 @@ class TestConversationManager:
             assert not conv1.entries[1].HasField('chat_message')
             assert conv2.entries[1].single_model_response.message.role == chat_pb2.Role.ASSISTANT
             assert conv2.entries[1].single_model_response.message.content == 'Python and JavaScript are both popular programming languages, but they serve different primary purposes. Python is known for its simplicity and readability, often used in backend development, data science, and AI. JavaScript was originally designed for web browsers but has evolved to be used in many environments.'  # noqa: E501
-            assert conv2.entries[1].single_model_response.config_snapshot.model_family == 'OpenAI'
+            assert conv2.entries[1].single_model_response.config_snapshot.model_type == 'OpenAI'
             assert conv2.entries[1].single_model_response.config_snapshot.model_name == 'gpt-4o-mini'  # noqa: E501
             assert conv2.entries[1].single_model_response.config_snapshot.model_parameters.HasField('temperature')  # noqa: E501
             assert conv2.entries[1].single_model_response.config_snapshot.model_parameters.temperature == pytest.approx(0.5)  # noqa: E501
@@ -499,7 +499,7 @@ class TestConversationManager:
             assert not conv2.entries[3].HasField('chat_message')
             assert conv2.entries[3].multi_model_response.responses[0].message.role == chat_pb2.Role.ASSISTANT  # noqa: E501
             assert conv2.entries[3].multi_model_response.responses[0].message.content == 'For beginners, Python is often considered the better choice due to its clean syntax and gentle learning curve.'  # noqa: E501
-            assert conv2.entries[3].multi_model_response.responses[0].config_snapshot.model_family == 'OpenAI'  # noqa: E501
+            assert conv2.entries[3].multi_model_response.responses[0].config_snapshot.model_type == 'OpenAI'  # noqa: E501
             assert conv2.entries[3].multi_model_response.responses[0].config_snapshot.model_name == 'gpt-4o-mini'  # noqa: E501
             assert conv2.entries[3].multi_model_response.responses[0].config_snapshot.model_parameters.HasField('temperature')  # noqa: E501
             assert conv2.entries[3].multi_model_response.responses[0].config_snapshot.model_parameters.temperature == pytest.approx(0.8)  # noqa: E501
@@ -509,7 +509,7 @@ class TestConversationManager:
             assert conv2.entries[3].multi_model_response.responses[0].model_index == 0
             assert conv2.entries[3].multi_model_response.responses[1].message.role == chat_pb2.Role.ASSISTANT  # noqa: E501
             assert conv2.entries[3].multi_model_response.responses[1].message.content == "I recommend starting with Python because of its readability and extensive learning resources, though JavaScript is also a viable option if you're interested in web development."  # noqa: E501
-            assert conv2.entries[3].multi_model_response.responses[1].config_snapshot.model_family == 'Claude'  # noqa: E501
+            assert conv2.entries[3].multi_model_response.responses[1].config_snapshot.model_type == 'Anthropic'  # noqa: E501
             assert conv2.entries[3].multi_model_response.responses[1].config_snapshot.model_name == 'claude-3-haiku-latest'  # noqa: E501
             assert conv2.entries[3].multi_model_response.responses[1].config_snapshot.model_parameters.HasField('temperature')  # noqa: E501
             assert conv2.entries[3].multi_model_response.responses[1].config_snapshot.model_parameters.temperature == pytest.approx(0.2)  # noqa: E501
@@ -1129,7 +1129,7 @@ class TestConversationManager:
                         content="Model response",
                     ),
                     config_snapshot=chat_pb2.ModelConfig(
-                        model_family="test",
+                        model_type="test",
                         model_name="test-model",
                     ),
                     model_index=0,
@@ -1351,7 +1351,7 @@ class TestConversationManager:
             assert branched_msgs[1].HasField("single_model_response")
             assert branched_msgs[1].single_model_response.message.content == f"Response from model {model_index}"  # noqa: E501
             assert branched_msgs[1].single_model_response.model_index == 0
-            assert branched_msgs[1].single_model_response.config_snapshot.model_family == f"api-test{model_index}"  # noqa: E501
+            assert branched_msgs[1].single_model_response.config_snapshot.model_type == f"api-test{model_index}"  # noqa: E501
             assert branched_msgs[1].single_model_response.config_snapshot.model_parameters == create_fake_config_snapshot('', '').model_parameters  # noqa: E501
             # NOTE that the timestamps will not match since we create a new timestamp for the
             # branched messages
@@ -1789,7 +1789,7 @@ class TestConvertProtoMessages:
         parameters.
         """
         model_config = chat_pb2.ModelConfig(
-            model_family="OpenAI",
+            model_type="OpenAI",
             model_name="gpt-4",
             model_parameters=chat_pb2.ModelParameters(
                 temperature=0.7,
@@ -1813,7 +1813,7 @@ class TestConvertProtoMessages:
                                 content="Different params response",
                             ),
                             config_snapshot=chat_pb2.ModelConfig(
-                                model_family="OpenAI",
+                                model_type="OpenAI",
                                 model_name="gpt-4",
                                 model_parameters=chat_pb2.ModelParameters(
                                     temperature=0.5,  # Different temperature
@@ -1829,7 +1829,7 @@ class TestConvertProtoMessages:
                                 content="Different params response",
                             ),
                             config_snapshot=chat_pb2.ModelConfig(
-                                model_family="OpenAI",
+                                model_type="OpenAI",
                                 model_name="gpt-4",
                                 model_parameters=chat_pb2.ModelParameters(
                                     temperature=0.5,  # Different temperature
@@ -1845,7 +1845,7 @@ class TestConvertProtoMessages:
                                 content="Matching params response",
                             ),
                             config_snapshot=chat_pb2.ModelConfig(
-                                model_family="OpenAI",
+                                model_type="OpenAI",
                                 model_name="gpt-4",
                                 model_parameters=chat_pb2.ModelParameters(
                                     temperature=0.7,
@@ -1867,7 +1867,7 @@ class TestConvertProtoMessages:
     def test__convert_proto__messages_multi_model_no_match_due_to_params(self):
         """Test conversion fails when model matches but parameters don't."""
         model_config = chat_pb2.ModelConfig(
-            model_family="OpenAI",
+            model_type="OpenAI",
             model_name="gpt-4",
             model_parameters=chat_pb2.ModelParameters(
                 temperature=0.7,
@@ -1890,7 +1890,7 @@ class TestConvertProtoMessages:
                                 content="Should not match",
                             ),
                             config_snapshot=chat_pb2.ModelConfig(
-                                model_family="OpenAI",
+                                model_type="OpenAI",
                                 model_name="gpt-4",
                                 model_parameters=chat_pb2.ModelParameters(
                                     temperature=0.5,
@@ -1907,7 +1907,7 @@ class TestConvertProtoMessages:
                                 content="Should match.",
                             ),
                             config_snapshot=chat_pb2.ModelConfig(
-                                model_family="OpenAI",
+                                model_type="OpenAI",
                                 model_name="gpt-4",
                                 model_parameters=chat_pb2.ModelParameters(
                                     temperature=0.7,
@@ -1943,7 +1943,7 @@ class TestConvertProtoMessages:
                                 content="Model Index 1",
                             ),
                             config_snapshot=chat_pb2.ModelConfig(
-                                model_family="OpenAI",
+                                model_type="OpenAI",
                                 model_name="gpt-4",
                                 model_parameters=chat_pb2.ModelParameters(
                                     temperature=0.7,
@@ -1958,7 +1958,7 @@ class TestConvertProtoMessages:
                                 content="Model Index 0",
                             ),
                             config_snapshot=chat_pb2.ModelConfig(
-                                model_family="Claude",
+                                model_type="Anthropic",
                                 model_name="claude-3",
                                 model_parameters=chat_pb2.ModelParameters(
                                     temperature=0.5,
@@ -2032,7 +2032,7 @@ class TestConvertProtoMessages:
         selected. If selected_model_index is 1, then it will override the matching config 0.
         """
         model_config = chat_pb2.ModelConfig(
-            model_family="api-test0",
+            model_type="api-test0",
             model_name="test-model0",
             model_parameters=chat_pb2.ModelParameters(
                 temperature=0.7,

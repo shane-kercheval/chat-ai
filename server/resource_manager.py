@@ -15,6 +15,11 @@ from cachetools import LRUCache
 from dataclasses import dataclass
 from proto.generated import chat_pb2
 from server.agents.context_strategy_agent import ContextStrategyAgent, ContextType
+from server.models.openai import (
+    # need to import AsyncOpenAIFunctionWrapper so it is registered
+    AsyncOpenAIFunctionWrapper,  # noqa
+    OPENAI_FUNCTIONS,
+)
 from server.utilities import (
     clean_text_from_pdf,
     extract_text_from_pdf,
@@ -178,7 +183,7 @@ class ResourceManager:
             num_workers: int = 2,
             rag_scorer: SimilarityScorer | None = None,
             rag_char_threshold: int = 5000,
-            context_strategy_model: str = 'gpt-4o-mini',
+            context_strategy_model_config: dict | None = None,
         ):
         """
         Initialize the resource manager.
@@ -193,15 +198,20 @@ class ResourceManager:
             rag_char_threshold:
                 Minimum character count for RAG. (Documents below this threshold will automatically
                 include the entire content in the context.)
-            context_strategy_model:
-                Model to use for the strategy agent.
+            context_strategy_model_config:
+                Model config to use for the strategy agent. See `Model.instantiate` for format.
         """
         self.db_path = db_path
         self._manager = Manager()
         self._global_lock = asyncio.Lock()
         self._rag_scorer = rag_scorer
         self._rag_char_threshold = rag_char_threshold
-        self._context_strategy_model = context_strategy_model
+        if not context_strategy_model_config:
+            self._context_strategy_model_config = {
+                'model_type': OPENAI_FUNCTIONS,
+                'model_name': 'gpt-4o-mini',
+            }
+        self._context_strategy_model_config = context_strategy_model_config
         self._resource_locks = LRUCache(maxsize=1000)
         self._work_queue = Queue()
         self._workers = [
@@ -407,7 +417,7 @@ class ResourceManager:
         # convert list of chat_pb2.Resource to list of Resource objects
         resources = await asyncio.gather(*(self.get_resource(r.path, r.type) for r in resources))
 
-        if context_strategy == ContextStrategy.AUTO and not self._context_strategy_model:
+        if context_strategy == ContextStrategy.AUTO and not self._context_strategy_model_config:
             raise ValueError("Context strategy model must be provided for AUTO strategy")
         if context_strategy == ContextStrategy.AUTO and not query:
             raise ValueError("Query must be provided for AUTO strategy")
@@ -431,7 +441,7 @@ class ResourceManager:
             ]
         elif context_strategy == ContextStrategy.AUTO:
             # Get context strategy from agent for each file
-            agent = ContextStrategyAgent(model=self._context_strategy_model)
+            agent = ContextStrategyAgent(model_config=self._context_strategy_model_config)
             summary = await agent(
                 messages=[{"role": "user", "content": query}],
                 resource_names=[r.path for r in resources],
