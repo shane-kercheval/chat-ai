@@ -9,8 +9,6 @@ import sys
 import textwrap
 from uuid import uuid4
 import aiofiles
-from anthropic import AsyncAnthropic
-from openai import AsyncOpenAI
 import grpc
 import asyncio
 from google.protobuf import timestamp_pb2, empty_pb2
@@ -23,8 +21,13 @@ from server.model_config_manager import ModelConfigManager
 from server.model_registry import ModelRegistry
 from server.models import ChatChunkResponse, ChatStreamResponseSummary
 from server.models.base import Model
-from server.models.anthropic import AsyncAnthropicCompletionWrapper
-from server.models.openai import AsyncOpenAICompletionWrapper
+# these need to be imported for the models to be registered
+from server.models.anthropic import AsyncAnthropicCompletionWrapper  # noqa: F401
+from server.models.openai import (
+    AsyncOpenAICompletionWrapper,  # noqa: F401
+    AsyncOpenAIFunctionWrapper,  # noqa: F401
+    OPENAI_FUNCTIONS,
+)
 from server.conversation_manager import (
     ConversationManager,
     ConversationNotFoundError,
@@ -60,7 +63,7 @@ class ContextServiceConfig:
     num_workers: int
     rag_scorer: SimilarityScorer | None = None
     rag_char_threshold: int = 5000
-    context_strategy_model: str | None = None
+    context_strategy_model_config: dict | None = None
 
 
 @dataclass
@@ -69,61 +72,6 @@ class ConfigurationServiceConfig:
 
     database_uri: str
     default_model_configs: list[dict]
-
-
-def get_completion_wrapper_class(model_name: str) -> Model:
-    """Get the completion wrapper for a given model."""
-    # TODO: could probably refactor this into a cleaner registry-like system
-    if model_name == 'openai-compatible-server':
-        return AsyncOpenAICompletionWrapper
-    if model_name in AsyncOpenAICompletionWrapper.supported_chat_model_names():
-        return AsyncOpenAICompletionWrapper
-    if model_name in AsyncAnthropicCompletionWrapper.supported_chat_model_names():
-        return AsyncAnthropicCompletionWrapper
-    raise ValueError(f"Invalid model: `{model_name}`")
-
-
-def create_client_instance(model_name: str, base_url: str) -> object:
-    """Get the client instance for a given model."""
-    # TODO: could probably refactor this into a cleaner registry-like system
-    if model_name == 'openai-compatible-server':
-        if not base_url:
-            raise ValueError("Missing `server_url` for model `openai-compatible-server`")
-        return AsyncOpenAI(base_url=base_url, api_key='None')
-    if model_name in AsyncOpenAICompletionWrapper.supported_chat_model_names():
-        api_key = os.getenv('OPENAI_API_KEY')
-        if not api_key:
-            raise ValueError(f"Missing `api_key` for model `{model_name}`")
-        return AsyncOpenAI(api_key=api_key)
-    if model_name in AsyncAnthropicCompletionWrapper.supported_chat_model_names():
-        api_key = os.getenv('ANTHROPIC_API_KEY')
-        if not api_key:
-            raise ValueError(f"Missing `api_key` for model `{model_name}`")
-        return AsyncAnthropic(api_key=api_key)
-    raise ValueError(f"Invalid model: `{model_name}`")
-
-
-def create_wrapper_instance(
-        wrapper_class: type,
-        client: object,
-        model_name: str,
-        temperature: float | None = None,
-        max_tokens: int | None = None,
-        top_p: float | None = None,
-    ) -> Model:
-    """Create a wrapper instance."""
-    if model_name == 'openai-compatible-server':  # noqa: SIM102
-        # If max_tokens is not provided, we'll set it; otherwise it will just output 1 token
-        if not max_tokens:
-            max_tokens = -1
-
-    return wrapper_class(
-        client=client,
-        model=model_name,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        top_p=top_p,
-    )
 
 
 def inject_context(
@@ -243,39 +191,26 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
     ) -> AsyncGenerator[chat_pb2.ChatStreamResponse, None]:
         """Process a single model's chat request."""
         try:
-            try:
-                wrapper_class = get_completion_wrapper_class(model_config.model_name)
-            except ValueError:
-                message = f"Invalid model: `{model_config.model_name}`"
-                self.logger.error(message)
-                if not context.cancelled():
-                    context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-                    context.set_details(message)
-                return
             params = model_config.model_parameters
             server_url = params.server_url if params.HasField("server_url") else None
             temperature = params.temperature if params.HasField("temperature") else None
             max_tokens = params.max_tokens if params.HasField("max_tokens") else None
             top_p = params.top_p if params.HasField("top_p") else None
 
-            logging.info(f"Request from model `{model_config.model_name}`")
+            logging.info(f"Request from model `{model_config.model_type}`; `{model_config.model_name}`")  # noqa: E501
             logging.info(f"Model index: `{model_index}`")
             logging.info(f"temperature: `{temperature}`")
             logging.info(f"max_tokens: `{max_tokens}`")
             logging.info(f"top_p: `{top_p}`")
 
-            client = create_client_instance(
-                model_name=model_config.model_name,
-                base_url=server_url,
-            )
-            model_wrapper = create_wrapper_instance(
-                wrapper_class=wrapper_class,
-                client=client,
-                model_name=model_config.model_name,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                top_p=top_p,
-            )
+            model_wrapper = Model.instantiate({
+                'model_type': model_config.model_type,
+                'model_name': model_config.model_name,
+                'server_url': server_url,
+                'temperature': temperature,
+                'max_tokens': max_tokens,
+                'top_p': top_p,
+            })
 
             # Get conversation history
             messages = await self.conversation_manager.get_messages(conv_id)
@@ -712,7 +647,7 @@ class ContextService(chat_pb2_grpc.ContextServiceServicer):
             num_workers=config.num_workers,
             rag_scorer=config.rag_scorer,
             rag_char_threshold=config.rag_char_threshold,
-            context_strategy_model=config.context_strategy_model,
+            context_strategy_model_config=config.context_strategy_model_config,
         )
 
     async def initialize(self) -> None:
@@ -945,7 +880,10 @@ async def serve() -> None:
             database_uri=db_path,
             num_workers=3,
             rag_scorer=SimilarityScorer(SentenceTransformer('all-MiniLM-L6-v2'), chunk_size=500),
-            context_strategy_model='gpt-4o',
+            context_strategy_model_config={
+                'model_type': OPENAI_FUNCTIONS,
+                'model_name': 'gpt-4o',
+            },
         ),
     )
     await context_service.initialize()

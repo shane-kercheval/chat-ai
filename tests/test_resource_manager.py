@@ -10,6 +10,7 @@ import tempfile
 import aiofiles
 import numpy as np
 
+from server.models.openai import OPENAI_FUNCTIONS
 from proto.generated import chat_pb2
 from server.agents.context_strategy_agent import ContextType
 from server.resource_manager import ResourceManager, ResourceNotFoundError, ContextStrategy
@@ -1445,7 +1446,7 @@ class TestResourceManagerContextAuto:
             manager = ResourceManager(
                 db_path=db_path,
                 rag_scorer=SimilarityScorer(MockEmbeddingModel()),
-                context_strategy_model=None,
+                context_strategy_model_config=None,
             )
             await manager.initialize()
             await manager.add_resource(file_path, chat_pb2.ResourceType.FILE)
@@ -1474,7 +1475,10 @@ class TestResourceManagerContextAuto:
                 rag_scorer=SimilarityScorer(MockEmbeddingModel(), chunk_size=10),
                 # set low threshold to ensure we don't create a false negative by bypassing RAG
                 rag_char_threshold=10,
-                context_strategy_model="gpt-4o-mini",
+                context_strategy_model_config={
+                    'model_type': OPENAI_FUNCTIONS,
+                    'model_name': 'gpt-4o-mini',
+                },
             )
             await manager.initialize()
             await manager.add_resource(code_path, chat_pb2.ResourceType.FILE)
@@ -1516,7 +1520,10 @@ class TestResourceManagerContextAuto:
                 rag_scorer=SimilarityScorer(MockEmbeddingModel(), chunk_size=10),
                 # set low threshold to ensure we don't create a false negative by bypassing RAG
                 rag_char_threshold=10,
-                context_strategy_model='gpt-4o',
+                context_strategy_model_config={
+                    'model_type': OPENAI_FUNCTIONS,
+                    'model_name': 'gpt-4o-mini',
+                },
             )
             await manager.initialize()
             await manager.add_resource(readme_path, chat_pb2.ResourceType.FILE)

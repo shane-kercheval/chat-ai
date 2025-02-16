@@ -3,7 +3,6 @@ import asyncio
 import os
 import pytest
 from dotenv import load_dotenv
-from anthropic import AsyncAnthropic
 from server.models.base import Model
 from server.models.anthropic import (
     ANTHROPIC,
@@ -17,30 +16,6 @@ load_dotenv()
 
 ANTHROPIC_TEST_MODEL = 'claude-3-5-haiku-latest'
 
-class TestClassHelperFucntions:  # noqa: D101
-
-    def test_provider_name(self):
-        assert AsyncAnthropicCompletionWrapper.provider_name() == 'Anthropic'
-
-    def test_primary_chat_model_names(self):
-        primary_names = AsyncAnthropicCompletionWrapper.primary_chat_model_names()
-        all_names = AsyncAnthropicCompletionWrapper.supported_chat_model_names()
-        assert ANTHROPIC_TEST_MODEL in AsyncAnthropicCompletionWrapper.primary_chat_model_names()
-        assert all(name in all_names for name in primary_names)
-
-    def test_supported_chat_model_names(self):
-        supported_names = AsyncAnthropicCompletionWrapper.supported_chat_model_names()
-        assert ANTHROPIC_TEST_MODEL in supported_names
-
-    def test_cost_per_token(self):
-        cost = AsyncAnthropicCompletionWrapper.cost_per_token(ANTHROPIC_TEST_MODEL, 'input')
-        assert isinstance(cost, float)
-        assert cost > 0
-
-        cost = AsyncAnthropicCompletionWrapper.cost_per_token(ANTHROPIC_TEST_MODEL, 'output')
-        assert isinstance(cost, float)
-        assert cost > 0
-
 
 @pytest.mark.skipif(os.getenv('ANTHROPIC_API_KEY') is None, reason="ANTHROPIC_API_KEY is not set")
 @pytest.mark.asyncio
@@ -48,15 +23,9 @@ async def test_async_anthropic_completion_wrapper_call():
     """Test the Anthropic wrapper with multiple concurrent calls."""
     # Create an instance of the wrapper
     model = AsyncAnthropicCompletionWrapper(
-        client=AsyncAnthropic(),
-        model=ANTHROPIC_TEST_MODEL,
+        model_name=ANTHROPIC_TEST_MODEL,
         max_tokens=100,
     )
-
-    assert AsyncAnthropicCompletionWrapper.provider_name() == 'Anthropic'
-    assert ANTHROPIC_TEST_MODEL in AsyncAnthropicCompletionWrapper.primary_chat_model_names()
-    assert ANTHROPIC_TEST_MODEL in AsyncAnthropicCompletionWrapper.supported_chat_model_names()
-
     messages = [
         system_message("You are a helpful assistant."),
         user_message("What is the capital of France?"),
@@ -99,19 +68,18 @@ def test_Anthropic_registration():
 
 
 def test_Anthropic_from_dict():
-    model = Model.from_dict({'model_type': ANTHROPIC, 'model': ANTHROPIC_TEST_MODEL})
+    model = Model.instantiate({'model_type': ANTHROPIC, 'model_name': ANTHROPIC_TEST_MODEL})
     assert isinstance(model, AsyncAnthropicCompletionWrapper)
     assert model.model == ANTHROPIC_TEST_MODEL
     assert model.client is not None
     assert model.client.api_key
     assert model.client.api_key != 'None'
-    assert model.client.base_url
 
 
 @pytest.mark.skipif(os.getenv('ANTHROPIC_API_KEY') is None, reason="ANTHROPIC_API_KEY is not set")
 @pytest.mark.asyncio
 async def test_Anthropic_from_dict_call():
-    model = Model.from_dict({'model_type': ANTHROPIC, 'model': ANTHROPIC_TEST_MODEL})
+    model = Model.instantiate({'model_type': ANTHROPIC, 'model_name': ANTHROPIC_TEST_MODEL})
     responses = []
     async for response in model(messages=[user_message("What is the capital of France?")]):
         if isinstance(response, ChatChunkResponse):
@@ -121,9 +89,9 @@ async def test_Anthropic_from_dict_call():
     assert 'Paris' in ''.join([response.content for response in responses])
 
 def test_Anthropic_from_dict___parameters():
-    model = Model.from_dict({
+    model = Model.instantiate({
         'model_type': ANTHROPIC,
-        'model': ANTHROPIC_TEST_MODEL,
+        'model_name': ANTHROPIC_TEST_MODEL,
         'temperature': 0.5,
         'max_tokens': 100,
     })

@@ -1,6 +1,11 @@
 """Tests for context strategy agent."""
 import asyncio
 import pytest
+from server.models.openai import (
+    # needs to be imported so that it is registered
+    AsyncOpenAIFunctionWrapper,  # noqa
+    OPENAI_FUNCTIONS,
+)
 from server.agents.context_strategy_agent import (
     ContextStrategyAgent,
     ContextStrategyResult,
@@ -20,7 +25,11 @@ class TestContextStrategyBasics:
     @pytest.fixture
     def agent(self):
         """Create a basic agent."""
-        return ContextStrategyAgent(model=TEST_MODEL)
+        model_config = {
+            'model_type': OPENAI_FUNCTIONS,
+            'model_name': TEST_MODEL,
+        }
+        return ContextStrategyAgent(model_config=model_config)
 
     async def test_single_file_summary(self, agent: ContextStrategyAgent):
         """Test getting strategy for a single file."""
@@ -63,7 +72,11 @@ class TestRetrievalStrategies:
     @pytest.fixture
     def agent(self):
         """Create a basic agent."""
-        return ContextStrategyAgent(model=TEST_MODEL)
+        model_config = {
+            'model_type': OPENAI_FUNCTIONS,
+            'model_name': TEST_MODEL,
+        }
+        return ContextStrategyAgent(model_config=model_config)
 
     @pytest.mark.parametrize('test_case', [
         pytest.param(
@@ -144,7 +157,11 @@ class TestRetrievalStrategies:
         messages = [{"role": "user", "content": test_case["question"]}]
         files = test_case["files"]
         expected_strategies = test_case["expected_strategies"]
-        agent = ContextStrategyAgent(model=TEST_MODEL)
+        model_config = {
+            'model_type': OPENAI_FUNCTIONS,
+            'model_name': TEST_MODEL,
+        }
+        agent = ContextStrategyAgent(model_config=model_config)
         summaries = await asyncio.gather(*(
             agent(messages=messages, resource_names=files)
             for _ in range(sample_size)

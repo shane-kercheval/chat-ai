@@ -8,9 +8,8 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from textwrap import dedent
-from openai import AsyncOpenAI
+from server.models.base import Model
 from server.models.openai import (
-    AsyncOpenAIFunctionWrapper,
     Function,
     Parameter,
 )
@@ -111,22 +110,19 @@ class ResourceContextFunction:
 class ContextStrategyAgent:
     """Agent that determines context strategy for resources based on a question."""
 
-    def __init__(
-        self,
-        model: str,
-        **model_kwargs: dict[str, object],
-    ) -> None:
-        """Initialize the agent."""
-        self.model = model
-        self.model_kwargs = model_kwargs
-        self.function = ResourceContextFunction.create()
-        self.client = AsyncOpenAI()
-        self.wrapper = AsyncOpenAIFunctionWrapper(
-            client=self.client,
-            model=self.model,
-            functions=[self.function],
-            **self.model_kwargs,
-        )
+    def __init__(self, model_config: dict, **model_kwargs: dict[str, object]):
+        """
+        Initialize the agent.
+
+        Args:
+            model_config:
+                Configuration for the model. See Model.instantiate for format.
+            **model_kwargs:
+                Additional keyword arguments for the model.
+        """
+        model_config['functions'] = [ResourceContextFunction.create()]
+        model_config = {**model_config, **model_kwargs}
+        self.wrapper = Model.instantiate(model_config)
 
     async def __call__(
         self,

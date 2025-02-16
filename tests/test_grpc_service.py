@@ -53,7 +53,7 @@ def get_default_model_config(api_key_name: str) -> chat_pb2:
     """Get the default model config for a API KEY name."""
     if api_key_name == 'OPENAI_API_KEY':
         return chat_pb2.ModelConfig(
-            model_family='OpenAI',
+            model_type='OpenAI',
             model_name=OPENAI_MODEL_NAME,
             model_parameters=chat_pb2.ModelParameters(
                 temperature=0.1,
@@ -62,7 +62,7 @@ def get_default_model_config(api_key_name: str) -> chat_pb2:
         )
     if api_key_name == 'ANTHROPIC_API_KEY':
         return chat_pb2.ModelConfig(
-            model_family='Anthropic',
+            model_type='Anthropic',
             model_name=ANTHROPIC_MODEL_NAME,
             model_parameters=chat_pb2.ModelParameters(
                 temperature=0.1,
@@ -102,7 +102,7 @@ async def grpc_server(temp_sqlite_db_path):  # noqa: ANN001
         num_workers=2,
         rag_scorer=SimilarityScorer(EMBEDDING_MODEL, chunk_size=CHUNK_SIZE),
         rag_char_threshold=RAG_CHAR_THRESHOLD,
-        context_strategy_model=CONTEXT_STRATEGY_MODEL_NAME,
+        context_strategy_model_config=CONTEXT_STRATEGY_MODEL_NAME,
     ))
     await context_service.initialize()
 
@@ -361,7 +361,7 @@ class TestCompletionService:
         request = chat_pb2.ChatRequest(
             model_configs=[
                 chat_pb2.ModelConfig(
-                    model_family='OpenAI',
+                    model_type='OpenAI',
                     model_name='invalid-model',
                     model_parameters=chat_pb2.ModelParameters(temperature=0.1),
                 ),
@@ -447,7 +447,7 @@ class TestCompletionService:
         request = chat_pb2.ChatRequest(
             model_configs=[
                 chat_pb2.ModelConfig(
-                    model_family=get_default_model_config(api_env_key).model_family,
+                    model_type=get_default_model_config(api_env_key).model_type,
                     model_name=get_default_model_config(api_env_key).model_name,
                     model_parameters=chat_pb2.ModelParameters(
                         temperature=0.1,
@@ -551,16 +551,19 @@ class TestCompletionService:
         assert OPENAI_MODEL_NAME in model_names
         assert ANTHROPIC_MODEL_NAME in model_names
         # Verify model info fields
+        tested_ocs = False
+        tested_non_ocs = False
         for model in response.models:
-            assert model.family in ('OpenAI', 'Claude', 'Local')
+            assert model.type in ('OpenAI', 'Anthropic')
             assert model.display_name
-            if model.family == 'Local':
+            if model.name == 'openai-compatible-server':
                 assert not model.HasField('context_window')
                 assert not model.HasField('output_token_limit')
                 assert not model.HasField('cost_per_input_token')
                 assert model.cost_per_input_token == 0
                 assert not model.HasField('cost_per_output_token')
                 assert model.cost_per_output_token == 0
+                tested_ocs = True
             else:
                 assert model.HasField('context_window')
                 assert model.context_window > 0
@@ -570,6 +573,9 @@ class TestCompletionService:
                 assert model.cost_per_input_token > 0
                 assert model.HasField('cost_per_output_token')
                 assert model.cost_per_output_token > 0
+                tested_non_ocs = True
+        assert tested_ocs
+        assert tested_non_ocs
 
     async def test__get_history__empty(self, grpc_channel):  # noqa: ANN001
         """Test getting history when no conversations exist."""
@@ -609,7 +615,7 @@ class TestCompletionService:
         assert history_conv_1.entries[1].HasField("single_model_response")
         assert history_conv_1.entries[1].single_model_response.message.role == chat_pb2.Role.ASSISTANT  # noqa: E501
         assert "4" in history_conv_1.entries[1].single_model_response.message.content
-        assert history_conv_1.entries[1].single_model_response.config_snapshot.model_family == "OpenAI"  # noqa: E501
+        assert history_conv_1.entries[1].single_model_response.config_snapshot.model_type == "OpenAI"  # noqa: E501
         assert history_conv_1.entries[1].single_model_response.config_snapshot.model_name == OPENAI_MODEL_NAME  # noqa: E501
         assert history_conv_1.entries[1].single_model_response.config_snapshot.model_parameters.HasField("temperature")  # noqa: E501
         assert history_conv_1.entries[1].single_model_response.config_snapshot.model_parameters.temperature == pytest.approx(0.1)  # noqa: E501
@@ -623,9 +629,9 @@ class TestCompletionService:
             get_default_model_config('OPENAI_API_KEY'),
             get_default_model_config('OPENAI_API_KEY'),
         ]
+        model_configs[0].model_parameters.temperature = 0.1
+        model_configs[1].model_parameters.temperature = 0.2
         # hacky way to verify the model index
-        model_configs[0].model_family = "0"
-        model_configs[1].model_family = "1"
         request2 = chat_pb2.ChatRequest(
             model_configs=model_configs,
             messages=[
@@ -665,14 +671,17 @@ class TestCompletionService:
         assert conv2.entries[1].HasField("multi_model_response")
         assert not conv2.entries[1].multi_model_response.HasField("selected_model_index")
         assert len(conv2.entries[1].multi_model_response.responses) == 2
-        for i, response in enumerate(conv2.entries[1].multi_model_response.responses):
+        for response in conv2.entries[1].multi_model_response.responses:
             assert response.message.role == chat_pb2.Role.ASSISTANT
             assert response.message.content
-            # from above we set the model_family to be the index
-            assert response.model_index == int(response.config_snapshot.model_family)
             assert response.config_snapshot.model_name == OPENAI_MODEL_NAME
             assert response.config_snapshot.model_parameters.HasField("temperature")
-            assert response.config_snapshot.model_parameters.temperature == pytest.approx(0.1)
+            if response.model_index == 0:
+                assert response.config_snapshot.model_parameters.temperature == pytest.approx(0.1)
+            elif response.model_index == 1:
+                assert response.config_snapshot.model_parameters.temperature == pytest.approx(0.2)
+            else:
+                pytest.fail("Invalid model index")
             assert response.config_snapshot.model_parameters.HasField("max_tokens")
             assert response.config_snapshot.model_parameters.max_tokens == 100
             assert not response.config_snapshot.model_parameters.HasField("top_p")
@@ -2097,7 +2106,7 @@ class TestConfigurationService:
         new_config = chat_pb2.UserModelConfig(
             config_name="Test Config",
             config=chat_pb2.ModelConfig(
-                model_family="OpenAI",
+                model_type="OpenAI",
                 model_name=OPENAI_MODEL_NAME,
                 model_parameters=chat_pb2.ModelParameters(
                     temperature=0.7,
@@ -2111,7 +2120,7 @@ class TestConfigurationService:
         # Verify saved config
         assert saved_config.config_id  # Should have generated ID
         assert saved_config.config_name == new_config.config_name
-        assert saved_config.config.model_family == new_config.config.model_family
+        assert saved_config.config.model_type == new_config.config.model_type
         assert saved_config.config.model_name == new_config.config.model_name
         assert saved_config.config.model_parameters.temperature == new_config.config.model_parameters.temperature  # noqa: E501
         assert saved_config.config.model_parameters.max_tokens == new_config.config.model_parameters.max_tokens  # noqa: E501
@@ -2126,7 +2135,7 @@ class TestConfigurationService:
         updated_config = await stub.save_model_config(update_request)
         assert updated_config.config_id == saved_config.config_id
         assert updated_config.config_name == saved_config.config_name
-        assert updated_config.config.model_family == saved_config.config.model_family
+        assert updated_config.config.model_type == saved_config.config.model_type
         assert updated_config.config.model_name == saved_config.config.model_name
         assert updated_config.config.model_parameters.temperature == pytest.approx(0.8)
         assert updated_config.config.model_parameters.max_tokens == saved_config.config.model_parameters.max_tokens  # noqa: E501
