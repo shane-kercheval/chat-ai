@@ -11,6 +11,7 @@ import grpc
 from sentence_transformers import SentenceTransformer
 import yaml
 from typing import Optional
+from server.models.openai import OPENAI_FUNCTIONS
 from server.resource_manager import ContextStrategy
 from tests.conftest import create_temp_file
 from proto.generated import chat_pb2, chat_pb2_grpc
@@ -36,7 +37,10 @@ SUPPORTED_MODELS_PATH = str(PROJECT_ROOT / 'artifacts/supported_models.yaml')
 DEFAULT_MODEL_CONFIGS_PATH = str(PROJECT_ROOT / 'artifacts/default_model_configs.yaml')
 
 OPENAI_MODEL_NAME = 'gpt-4o-mini'
-CONTEXT_STRATEGY_MODEL_NAME = 'gpt-4o'
+CONTEXT_STRATEGY_MODEL_CONFIG = {
+    'model_type': OPENAI_FUNCTIONS,
+    'model_name': 'gpt-4o',
+}
 ANTHROPIC_MODEL_NAME = 'claude-3-5-haiku-latest'
 
 EXPECTED_NUMBER_OF_CONFIGS = None
@@ -102,7 +106,7 @@ async def grpc_server(temp_sqlite_db_path):  # noqa: ANN001
         num_workers=2,
         rag_scorer=SimilarityScorer(EMBEDDING_MODEL, chunk_size=CHUNK_SIZE),
         rag_char_threshold=RAG_CHAR_THRESHOLD,
-        context_strategy_model_config=CONTEXT_STRATEGY_MODEL_NAME,
+        context_strategy_model_config=CONTEXT_STRATEGY_MODEL_CONFIG,
     ))
     await context_service.initialize()
 
