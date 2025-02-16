@@ -22,7 +22,7 @@ from server.async_merge import AsyncMerge
 from server.model_config_manager import ModelConfigManager
 from server.model_registry import ModelRegistry
 from server.models import ChatChunkResponse, ChatStreamResponseSummary
-from server.models.base import BaseModelWrapper
+from server.models.base import Model
 from server.models.anthropic import AsyncAnthropicCompletionWrapper
 from server.models.openai import AsyncOpenAICompletionWrapper
 from server.conversation_manager import (
@@ -71,7 +71,7 @@ class ConfigurationServiceConfig:
     default_model_configs: list[dict]
 
 
-def get_completion_wrapper_class(model_name: str) -> BaseModelWrapper:
+def get_completion_wrapper_class(model_name: str) -> Model:
     """Get the completion wrapper for a given model."""
     # TODO: could probably refactor this into a cleaner registry-like system
     if model_name == 'openai-compatible-server':
@@ -110,7 +110,7 @@ def create_wrapper_instance(
         temperature: float | None = None,
         max_tokens: int | None = None,
         top_p: float | None = None,
-    ) -> BaseModelWrapper:
+    ) -> Model:
     """Create a wrapper instance."""
     if model_name == 'openai-compatible-server':  # noqa: SIM102
         # If max_tokens is not provided, we'll set it; otherwise it will just output 1 token

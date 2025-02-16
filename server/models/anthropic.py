@@ -1,9 +1,12 @@
 """Helper functions for interacting with the Anthropic API."""
+import os
 import time
 from collections.abc import AsyncGenerator
 from anthropic import AsyncAnthropic, Anthropic
-from server.models.base import BaseModelWrapper, ChatChunkResponse, ChatStreamResponseSummary
+from server.models.base import Model, ChatChunkResponse, ChatStreamResponseSummary
 
+
+ANTHROPIC = 'Anthropic'
 
 CHAT_MODEL_COST_PER_TOKEN = {
     'claude-3-5-haiku-20241022': {'input': 0.80 / 1_000_000, 'output': 4.0 / 1_000_000},
@@ -53,7 +56,9 @@ def _parse_completion_chunk(chunk) -> ChatChunkResponse | None:  # noqa: ANN001
             )
     return None
 
-class AsyncAnthropicCompletionWrapper(BaseModelWrapper):
+
+@Model.register(ANTHROPIC)
+class AsyncAnthropicCompletionWrapper(Model):
     """
     Wrapper for Anthropic API which provides a simple interface for calling the
     messages.create method and parsing the response.
@@ -61,12 +66,14 @@ class AsyncAnthropicCompletionWrapper(BaseModelWrapper):
 
     def __init__(
             self,
-            client: AsyncAnthropic,
             model: str,
             max_tokens: int = 1_000,
             **model_kwargs: dict,
     ) -> None:
-        self.client = client
+        api_key = os.getenv('ANTHROPIC_API_KEY')
+        if not api_key:
+            raise ValueError("ANTHROPIC_API_KEY is not set")
+        self.client = AsyncAnthropic(api_key=api_key)
         self.model = model
         if not max_tokens:
             max_tokens = 1_000
@@ -77,7 +84,7 @@ class AsyncAnthropicCompletionWrapper(BaseModelWrapper):
     @classmethod
     def provider_name(cls) -> str:
         """Get the provider name of the model."""
-        return 'Anthropic'
+        return ANTHROPIC
 
     @classmethod
     def primary_chat_model_names(cls) -> list[str]:

@@ -1,13 +1,19 @@
 """Base functionality and classes for various models."""
 from abc import ABC, abstractmethod
 from collections.abc import AsyncGenerator
-from typing import Any
+from copy import deepcopy
+from enum import Enum
+from typing import Any, TypeVar
 
 from server.models import ChatChunkResponse, ChatStreamResponseSummary
+from utilities import Registry
 
+M = TypeVar('M', bound='Model')
 
-class BaseModelWrapper(ABC):
+class Model(ABC):
     """Base class for model wrappers."""
+
+    registry = Registry()
 
     @abstractmethod
     async def __call__(
@@ -48,3 +54,41 @@ class BaseModelWrapper(ABC):
     @abstractmethod
     def cost_per_token(cls, model_name: str, token_type: str) -> float:
         """Get the cost per token for the model."""
+
+
+    @classmethod
+    def register(cls, model_type: str | Enum):
+        """Register a subclass of Model."""
+
+        def decorator(subclass: type[Model]) -> type[Model]:
+            assert issubclass(
+                subclass,
+                Model,
+            ), f"Model '{model_type}' ({subclass.__name__}) must extend Model"
+            cls.registry.register(type_name=model_type, item=subclass)
+            return subclass
+
+        return decorator
+
+    @classmethod
+    def is_registered(cls, model_type: str | Enum) -> bool:
+        """Check if a model type is registered."""
+        return model_type in cls.registry
+
+    @classmethod
+    def from_dict(
+        cls: type[M],
+        data: dict,
+    ) -> M | list[M]:
+        """
+        Creates a Model object.
+
+        This method requires that the Model subclass has been registered with the `register`
+        decorator before calling this method. It also requires that the dictionary has a
+        `Model_type` field that matches the type name of the registered Model subclass.
+        """
+        data = deepcopy(data)
+        model_type = data.pop("model_type", "")
+        if cls.is_registered(model_type):
+            return cls.registry.create_instance(type_name=model_type, **data)
+        raise ValueError(f"Unknown Model type `{model_type}`")

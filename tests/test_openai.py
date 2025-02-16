@@ -4,6 +4,7 @@ import pytest
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
 from server.models import system_message, user_message
+from server.models.base import Model
 from server.models.openai import (
     AsyncOpenAICompletionWrapper,
     ChatChunkResponse,
@@ -13,6 +14,7 @@ from server.models.openai import (
     Parameter,
     FunctionCallResponse,
     FunctionCallResult,
+    OPENAI,
 )
 
 load_dotenv()
@@ -42,6 +44,61 @@ class TestClassHelperFucntions:  # noqa: D101
         cost = AsyncOpenAICompletionWrapper.cost_per_token(OPENAI_TEST_MODEL, 'output')
         assert isinstance(cost, float)
         assert cost > 0
+
+
+@pytest.mark.asyncio
+class TestOpenAICompletionWrapperRegistration:
+    """Test the OpenAI Completion Wrapper registration."""
+
+    def test_openai_registration(self):
+        assert Model.is_registered(OPENAI)
+
+    async def test_openai_from_dict(self):
+        model = Model.from_dict({'model_type': OPENAI, 'model': OPENAI_TEST_MODEL})
+        assert isinstance(model, AsyncOpenAICompletionWrapper)
+        assert model.model == OPENAI_TEST_MODEL
+        assert model.client is not None
+        assert model.client.api_key
+        assert model.client.api_key != 'None'
+        assert model.client.base_url
+
+        responses = []
+        async for response in model(messages=[user_message("What is the capital of France?")]):
+            if isinstance(response, ChatChunkResponse):
+                responses.append(response)
+
+        assert len(responses) > 0
+        assert 'Paris' in ''.join([response.content for response in responses])
+
+    async def test_openai_from_dict___parameters(self):
+        # This base_url is required for openai-compatible-server
+        with pytest.raises(ValueError):  # noqa: PT011
+            model = Model.from_dict({
+                'model_type': OPENAI,
+                'model': 'openai-compatible-server',
+            })
+
+        model = Model.from_dict({
+            'model_type': OPENAI,
+            'model': 'openai-compatible-server',
+            'base_url': 'http://localhost:8000',
+            'temperature': 0.5,
+        })
+        assert isinstance(model, AsyncOpenAICompletionWrapper)
+        assert model.model == 'openai-compatible-server'
+        assert model.model_parameters['temperature'] == 0.5
+        # we need to set the max_tokens parameter to -1 to avoid it sending just 1 token
+        assert model.model_parameters['max_tokens'] is not None
+
+        model = Model.from_dict({
+            'model_type': OPENAI,
+            'model': 'openai-compatible-server',
+            'base_url': 'http://localhost:8000',
+            'max_tokens': 10,
+        })
+        assert isinstance(model, AsyncOpenAICompletionWrapper)
+        assert model.model == 'openai-compatible-server'
+        assert model.model_parameters['max_tokens'] == 10
 
 
 @pytest.mark.asyncio
@@ -92,7 +149,6 @@ class TestOpenAICompletionWrapper:
                 and summary.duration_seconds > 0,
             )
         assert sum(passed_tests) / len(passed_tests) >= 0.9, f"Only {sum(passed_tests)} out of {len(passed_tests)} tests passed."  # noqa: E501
-
 
 
 @pytest.mark.asyncio

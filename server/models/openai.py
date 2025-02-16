@@ -2,13 +2,16 @@
 from dataclasses import dataclass
 from functools import cache
 import json
+import os
 import time
 from collections.abc import AsyncGenerator
 from openai import AsyncOpenAI
 import tiktoken
 from tiktoken import Encoding
-from server.models.base import BaseModelWrapper, ChatChunkResponse, ChatStreamResponseSummary
+from server.models.base import Model, ChatChunkResponse, ChatStreamResponseSummary
 
+
+OPENAI = 'OpenAI'
 
 CHAT_MODEL_COST_PER_TOKEN = {
     # minor versions
@@ -113,7 +116,8 @@ def _parse_completion_chunk(chunk) -> ChatChunkResponse:  # noqa: ANN001
     )
 
 
-class AsyncOpenAICompletionWrapper(BaseModelWrapper):
+@Model.register(OPENAI)
+class AsyncOpenAICompletionWrapper(Model):
     """
     Wrapper for OpenAI API which provides a simple interface for calling the
     chat.completions.create method and parsing the response.
@@ -125,8 +129,8 @@ class AsyncOpenAICompletionWrapper(BaseModelWrapper):
 
     def __init__(
             self,
-            client: AsyncOpenAI,
             model: str,
+            base_url: str | None = None,
             **model_kwargs: dict,
             ) -> None:
         """
@@ -137,16 +141,33 @@ class AsyncOpenAICompletionWrapper(BaseModelWrapper):
                 An instance of the AsyncOpenAI client.
             model:
                 The model name to use for the API call (e.g. 'gpt-4o-mini').
+            base_url:
+                The base URL for the API call. Required for the `openai-compatible-server` model.
             **model_kwargs: Additional parameters to pass to the API call
         """
-        self.client = client
+        if model == 'openai-compatible-server':
+            if not base_url:
+                raise ValueError("Missing `server_url` for model `openai-compatible-server`")
+            api_key = 'None'
+            # If max_tokens is not provided, we'll set it;
+            # otherwise the server will just output 1 token; not sure if this is llama.cpp issue
+            # or something else
+            if model_kwargs.get('max_tokens') is None:
+                model_kwargs['max_tokens'] = -1
+        else:
+            base_url = None
+            api_key = os.getenv('OPENAI_API_KEY')
+            if not api_key:
+                raise ValueError(f"Missing `api_key` for model `{model}`")
+
+        self.client = AsyncOpenAI(base_url=base_url, api_key=api_key)
         self.model = model
         self.model_parameters = model_kwargs or {}
 
     @classmethod
     def provider_name(cls) -> str:
         """Get the provider name of the model."""
-        return 'OpenAI'
+        return OPENAI
 
     @classmethod
     def primary_chat_model_names(cls) -> list[str]:
@@ -174,7 +195,7 @@ class AsyncOpenAICompletionWrapper(BaseModelWrapper):
         method will override the parameters passed to the constructor.
         """
         model = model or self.model
-        model_parameters = model_kwargs or self.model_parameters
+        model_parameters = {**self.model_parameters, **model_kwargs}
 
         start_time = time.time()
         chunks = []
@@ -300,8 +321,8 @@ class AsyncOpenAIFunctionWrapper:
 
     def __init__(
             self,
-            client: AsyncOpenAI,
             model: str,
+            base_url: str | None = None,
             functions: list[Function] | None = None,
             **model_kwargs: dict,
             ) -> None:
@@ -314,7 +335,17 @@ class AsyncOpenAIFunctionWrapper:
             functions: List of Function objects defining available functions.
             **model_kwargs: Additional parameters to pass to the API call
         """
-        self.client = client
+        if model == 'openai-compatible-server':
+            if not base_url:
+                raise ValueError("Missing `server_url` for model `openai-compatible-server`")
+            api_key = 'None'
+        else:
+            base_url = None
+            api_key = os.getenv('OPENAI_API_KEY')
+            if not api_key:
+                raise ValueError(f"Missing `api_key` for model `{model}`")
+
+        self.client = AsyncOpenAI(base_url=base_url, api_key=api_key)
         self.model = model
         self.functions = functions or []
         self.model_kwargs = model_kwargs or {}
