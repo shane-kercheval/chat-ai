@@ -63,10 +63,12 @@ async def test_async_anthropic_completion_wrapper_call():
         f"Only {sum(passed_tests)} out of {len(passed_tests)} tests passed."
     )
 
+
 def test_Anthropic_registration():
     assert Model.is_registered(ANTHROPIC)
 
 
+@pytest.mark.skipif(os.getenv('ANTHROPIC_API_KEY') is None, reason="ANTHROPIC_API_KEY is not set")
 def test_Anthropic_from_dict():
     model = Model.instantiate({'model_type': ANTHROPIC, 'model_name': ANTHROPIC_TEST_MODEL})
     assert isinstance(model, AsyncAnthropicCompletionWrapper)
@@ -88,6 +90,7 @@ async def test_Anthropic_from_dict_call():
     assert len(responses) > 0
     assert 'Paris' in ''.join([response.content for response in responses])
 
+@pytest.mark.skipif(os.getenv('ANTHROPIC_API_KEY') is None, reason="ANTHROPIC_API_KEY is not set")
 def test_Anthropic_from_dict___parameters():
     model = Model.instantiate({
         'model_type': ANTHROPIC,
