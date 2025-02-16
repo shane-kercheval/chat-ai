@@ -101,7 +101,7 @@ message ModelParameters {
 
 // used to communicate which model(s) the user wants to use
 message ModelConfig {
-    string model_family = 1;
+    string model_type = 1;
     string model_name = 2;
     ModelParameters model_parameters = 4;
 }
@@ -164,7 +164,7 @@ message ChatStreamResponse {
 
 // Information about models that are supported by the service
 message ModelInfo {
-    string family = 1;  // e.g. 'OpenAI'
+    string type = 1;  // e.g. 'OpenAI'
     string name = 2;  // e.g. 'gpt-4o-mini'
     string display_name = 3;
     optional int32 context_window = 4;

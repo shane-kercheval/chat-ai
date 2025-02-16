@@ -2,13 +2,17 @@
 from dataclasses import dataclass
 from functools import cache
 import json
+import os
 import time
 from collections.abc import AsyncGenerator
 from openai import AsyncOpenAI
 import tiktoken
 from tiktoken import Encoding
-from server.models.base import BaseModelWrapper, ChatChunkResponse, ChatStreamResponseSummary
+from server.models.base import Model, ChatChunkResponse, ChatStreamResponseSummary
 
+
+OPENAI = 'OpenAI'
+OPENAI_FUNCTIONS = 'OpenAIFunctions'
 
 CHAT_MODEL_COST_PER_TOKEN = {
     # minor versions
@@ -113,7 +117,8 @@ def _parse_completion_chunk(chunk) -> ChatChunkResponse:  # noqa: ANN001
     )
 
 
-class AsyncOpenAICompletionWrapper(BaseModelWrapper):
+@Model.register(OPENAI)
+class AsyncOpenAICompletionWrapper(Model):
     """
     Wrapper for OpenAI API which provides a simple interface for calling the
     chat.completions.create method and parsing the response.
@@ -125,8 +130,8 @@ class AsyncOpenAICompletionWrapper(BaseModelWrapper):
 
     def __init__(
             self,
-            client: AsyncOpenAI,
-            model: str,
+            model_name: str,
+            server_url: str | None = None,
             **model_kwargs: dict,
             ) -> None:
         """
@@ -135,51 +140,48 @@ class AsyncOpenAICompletionWrapper(BaseModelWrapper):
         Args:
             client:
                 An instance of the AsyncOpenAI client.
-            model:
+            model_name:
                 The model name to use for the API call (e.g. 'gpt-4o-mini').
+            server_url:
+                The base URL for the API call. Required for the `openai-compatible-server` model.
             **model_kwargs: Additional parameters to pass to the API call
         """
-        self.client = client
-        self.model = model
+        if model_name == 'openai-compatible-server':
+            if not server_url:
+                raise ValueError("Missing `server_url` for model `openai-compatible-server`")
+            api_key = 'None'
+            # If max_tokens is not provided, we'll set it;
+            # otherwise the server will just output 1 token; not sure if this is llama.cpp issue
+            # or something else
+            if model_kwargs.get('max_tokens') is None:
+                model_kwargs['max_tokens'] = -1
+        else:
+            server_url = None
+            api_key = os.getenv('OPENAI_API_KEY')
+            if not api_key:
+                raise ValueError(f"Missing `api_key` for model `{model_name}`")
+
+        self.client = AsyncOpenAI(base_url=server_url, api_key=api_key)
+        self.model = model_name
         self.model_parameters = model_kwargs or {}
-
-    @classmethod
-    def provider_name(cls) -> str:
-        """Get the provider name of the model."""
-        return 'OpenAI'
-
-    @classmethod
-    def primary_chat_model_names(cls) -> list[str]:
-        """Get the primary model names (e.g. the models we would want to display to the user)."""
-        return list(CHAT_MODEL_COST_PER_TOKEN_PRIMARY.keys())
-
-    @classmethod
-    def supported_chat_model_names(cls) -> list[str]:
-        """Get all model names supported by the wrapper."""
-        return list(CHAT_MODEL_COST_PER_TOKEN.keys())
-
-    @classmethod
-    def cost_per_token(cls, model_name: str, token_type: str) -> float:
-        """Get the cost per token for the model."""
-        return MODEL_COST_PER_TOKEN[model_name][token_type]
 
     async def __call__(
         self,
         messages: list[dict],
-        model: str | None = None,
+        model_name: str | None = None,
         **model_kwargs: dict,
     ) -> AsyncGenerator[ChatChunkResponse | ChatStreamResponseSummary, None]:
         """
         Streams chat chunks and returns a final summary. Note that any parameters passed to this
         method will override the parameters passed to the constructor.
         """
-        model = model or self.model
-        model_parameters = model_kwargs or self.model_parameters
+        model_name = model_name or self.model
+        model_parameters = {**self.model_parameters, **model_kwargs}
 
         start_time = time.time()
         chunks = []
         response = await self.client.chat.completions.create(
-            model=model,
+            model=model_name,
             messages=messages,
             stream=True,
             logprobs=True,
@@ -191,16 +193,16 @@ class AsyncOpenAICompletionWrapper(BaseModelWrapper):
                 yield parsed_chunk
                 chunks.append(parsed_chunk)
         end_time = time.time()
-        if model == 'openai-compatible-server':
+        if model_name == 'openai-compatible-server':
             input_tokens = int(len(str(messages)) / 4)
             output_tokens = int(sum(len(chunk.content) for chunk in chunks) / 4)
             total_input_cost=0
             total_output_cost=0
         else:
-            input_tokens = num_tokens_from_messages(model, messages)
-            output_tokens = sum(num_tokens(model, chunk.content) for chunk in chunks)
-            total_input_cost=input_tokens * MODEL_COST_PER_TOKEN[model]['input']
-            total_output_cost=output_tokens * MODEL_COST_PER_TOKEN[model]['output']
+            input_tokens = num_tokens_from_messages(model_name, messages)
+            output_tokens = sum(num_tokens(model_name, chunk.content) for chunk in chunks)
+            total_input_cost=input_tokens * MODEL_COST_PER_TOKEN[model_name]['input']
+            total_output_cost=output_tokens * MODEL_COST_PER_TOKEN[model_name]['output']
         yield ChatStreamResponseSummary(
             total_input_tokens=input_tokens,
             total_output_tokens=output_tokens,
@@ -295,13 +297,15 @@ class FunctionCallResponse:
     input_cost: float
     output_cost: float
 
-class AsyncOpenAIFunctionWrapper:
+
+@Model.register(OPENAI_FUNCTIONS)
+class AsyncOpenAIFunctionWrapper(Model):
     """Wrapper for OpenAI API function calling."""
 
     def __init__(
             self,
-            client: AsyncOpenAI,
-            model: str,
+            model_name: str,
+            server_url: str | None = None,
             functions: list[Function] | None = None,
             **model_kwargs: dict,
             ) -> None:
@@ -309,13 +313,29 @@ class AsyncOpenAIFunctionWrapper:
         Initialize the wrapper.
 
         Args:
-            client: An instance of the AsyncOpenAI client.
-            model: The model name to use for the API call (e.g. 'gpt-4').
-            functions: List of Function objects defining available functions.
-            **model_kwargs: Additional parameters to pass to the API call
+            client:
+                An instance of the AsyncOpenAI client.
+            model_name:
+                The model name to use for the API call (e.g. 'gpt-4').
+            server_url:
+                The base URL for the API call. Required for the `openai-compatible-server` model.
+            functions:
+                List of Function objects defining available functions.
+            **model_kwargs:
+                Additional parameters to pass to the API call
         """
-        self.client = client
-        self.model = model
+        if model_name == 'openai-compatible-server':
+            if not server_url:
+                raise ValueError("Missing `server_url` for model `openai-compatible-server`")
+            api_key = 'None'
+        else:
+            server_url = None
+            api_key = os.getenv('OPENAI_API_KEY')
+            if not api_key:
+                raise ValueError(f"Missing `api_key` for model `{model_name}`")
+
+        self.client = AsyncOpenAI(base_url=server_url, api_key=api_key)
+        self.model = model_name
         self.functions = functions or []
         self.model_kwargs = model_kwargs or {}
         if 'temperature' not in self.model_kwargs:
@@ -327,7 +347,7 @@ class AsyncOpenAIFunctionWrapper:
         messages: list[dict[str, str]],
         functions: list[Function] | None = None,
         tool_choice: str = 'required',
-        model: str | None = None,
+        model_name: str | None = None,
         **model_kwargs: dict[str, object],
     ) -> FunctionCallResponse:
         """
@@ -335,7 +355,7 @@ class AsyncOpenAIFunctionWrapper:
 
         Args:
             messages: List of messages to send to the model.
-            model: Optional model override.
+            model_name: Optional model override.
             functions: Optional functions override.
             tool_choice:
                 Controls which (if any) tool is called by the model. `none` means the model will
@@ -349,13 +369,13 @@ class AsyncOpenAIFunctionWrapper:
                 are present.
             **model_kwargs: Additional parameters to override defaults.
         """
-        model = model or self.model
+        model_name = model_name or self.model
         functions_list = functions or self.functions
         merged_kwargs = {**self.model_kwargs, **model_kwargs}
         tools = [func.to_dict() for func in functions_list]
 
         completion = await self.client.chat.completions.create(
-            model=model,
+            model=model_name,
             messages=messages,
             tools=tools,
             tool_choice=tool_choice,
@@ -374,8 +394,8 @@ class AsyncOpenAIFunctionWrapper:
         input_tokens = completion.usage.prompt_tokens
         output_tokens = completion.usage.completion_tokens
 
-        input_cost = input_tokens * CHAT_MODEL_COST_PER_TOKEN[model]['input']
-        output_cost = output_tokens * CHAT_MODEL_COST_PER_TOKEN[model]['output']
+        input_cost = input_tokens * CHAT_MODEL_COST_PER_TOKEN[model_name]['input']
+        output_cost = output_tokens * CHAT_MODEL_COST_PER_TOKEN[model_name]['output']
 
         return FunctionCallResponse(
             function_call=function_call,

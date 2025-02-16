@@ -1,14 +1,12 @@
 """Test the model registry."""
-
-
 import pytest
-from server.model_registry import ModelRegistry
+from server.supported_models import SupportedModels
 
 
 def test_model_registry():
     models = [
         {
-            'family': 'OpenAI',
+            'type': 'OpenAI',
             'name': 'gpt-4o-mini',
             'display_name': 'GPT-4o-mini',
             'context_window': 128000,
@@ -17,7 +15,7 @@ def test_model_registry():
             'cost_per_output_token': 0.0000006,
         },
         {
-            'family': 'OpenAI',
+            'type': 'OpenAI',
             'name': 'gpt-4o',
             'display_name': 'GPT-4o',
             'context_window': 128000,
@@ -26,7 +24,7 @@ def test_model_registry():
             'cost_per_output_token': 0.00001,
         },
         {
-            'family': 'Claude',
+            'type': 'Anthropic',
             'name': 'claude-3-5-haiku-latest',
             'display_name': 'Claude 3.5 Haiku',
             'context_window': 200000,
@@ -35,7 +33,7 @@ def test_model_registry():
             'cost_per_output_token': 0.000004,
         },
         {
-            'family': 'Claude',
+            'type': 'Anthropic',
             'name': 'claude-3-5-sonnet-latest',
             'display_name': 'Claude 3.5 Sonnet',
             'context_window': 200000,
@@ -44,14 +42,14 @@ def test_model_registry():
             'cost_per_output_token': 0.000015,
         },
         {
-            'family': 'Local',
+            'type': 'OpenAI',
             'name': 'openai-compatible-server',
             'display_name': 'OpenAI Compatible Server',
         },
     ]
-    registry = ModelRegistry(models)
+    registry = SupportedModels(models)
     assert len(registry.get_supported_models()) == 5
-    assert registry.get_supported_models()[0].family == 'OpenAI'
+    assert registry.get_supported_models()[0].type == 'OpenAI'
     assert registry.get_supported_models()[0].name == 'gpt-4o-mini'
     assert registry.get_supported_models()[0].display_name == 'GPT-4o-mini'
     assert registry.get_supported_models()[0].HasField('context_window')
@@ -63,7 +61,7 @@ def test_model_registry():
     assert registry.get_supported_models()[0].HasField('cost_per_output_token')
     assert registry.get_supported_models()[0].cost_per_output_token == pytest.approx(0.0000006)
 
-    assert registry.get_supported_models()[-1].family == 'Local'
+    assert registry.get_supported_models()[-1].type == 'OpenAI'
     assert registry.get_supported_models()[-1].name == 'openai-compatible-server'
     assert registry.get_supported_models()[-1].display_name == 'OpenAI Compatible Server'
     assert not registry.get_supported_models()[-1].HasField('context_window')

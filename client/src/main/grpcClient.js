@@ -43,6 +43,7 @@ function sendChatRequest(conversationId, modelConfigs, messageText, instructions
     // Convert each model config to protobuf ModelConfig
     const protoModelConfigs = modelConfigs.map(config => {
         const modelConfig = new ModelConfig();
+        modelConfig.setModelType(config.modelType);
         modelConfig.setModelName(config.modelName);
 
         const modelParameters = new ModelParameters();
@@ -177,6 +178,7 @@ function saveModelConfig(config) {
         userModelConfig.setConfigName(config.name);
         
         const modelConfig = new ModelConfig();
+        modelConfig.setModelType(config.modelType);
         modelConfig.setModelName(config.modelName);
         
         const modelParams = new ModelParameters();

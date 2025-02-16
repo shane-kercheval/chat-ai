@@ -94,6 +94,7 @@ export class ChatStore extends EventEmitter {
             this.modelConfigs = modelConfigs.configsList.map(config => ({
                 id: config.configId,
                 name: config.configName,
+                modelType: config.config.modelType,
                 modelName: config.config.modelName,
                 temperature: config.config.modelParameters?.temperature || 0.7,
                 serverUrl: config.config.modelParameters?.serverUrl
