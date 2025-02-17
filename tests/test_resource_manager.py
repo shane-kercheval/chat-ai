@@ -10,7 +10,6 @@ import tempfile
 import aiofiles
 import numpy as np
 
-from server.models.openai import OPENAI_FUNCTIONS
 from proto.generated import chat_pb2
 from server.agents.context_strategy_agent import ContextType
 from server.resource_manager import ResourceManager, ResourceNotFoundError, ContextStrategy

@@ -18,7 +18,6 @@ from server.agents.context_strategy_agent import ContextStrategyAgent, ContextTy
 from server.models.openai import (
     # need to import AsyncOpenAIFunctionWrapper so it is registered
     AsyncOpenAIFunctionWrapper,  # noqa
-    OPENAI_FUNCTIONS,
 )
 from server.utilities import (
     clean_text_from_pdf,
