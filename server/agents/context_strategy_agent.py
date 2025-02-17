@@ -8,10 +8,10 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from textwrap import dedent
-from server.models.base import Model
-from server.models.openai import (
+from server.models import (
     Function,
     Parameter,
+    Model,
 )
 
 

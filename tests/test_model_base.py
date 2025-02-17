@@ -1,6 +1,6 @@
 """Test the model registry."""
 import pytest
-from server.models.base import Model
+from server.models import Model
 from server.models.openai import OPENAI
 
 def test_registry_registration():

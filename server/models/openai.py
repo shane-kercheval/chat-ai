@@ -1,5 +1,4 @@
 """Helper functions for OpenAI API."""
-from dataclasses import dataclass
 from functools import cache
 import json
 import os
@@ -8,7 +7,14 @@ from collections.abc import AsyncGenerator
 from openai import AsyncOpenAI
 import tiktoken
 from tiktoken import Encoding
-from server.models.base import Model, ChatChunkResponse, ChatStreamResponseSummary
+from server.models import (
+    Function,
+    FunctionCallResponse,
+    FunctionCallResult,
+    Model,
+    ChatChunkResponse,
+    ChatStreamResponseSummary,
+)
 
 
 OPENAI = 'OpenAI'
@@ -210,92 +216,6 @@ class AsyncOpenAICompletionWrapper(Model):
             total_output_cost=total_output_cost,
             duration_seconds=end_time - start_time,
         )
-
-
-@dataclass
-class Parameter:
-    """
-    Represents a parameter property in a function's schema.
-
-    Supported types
-        The following types are supported for Structured Outputs:
-
-        String
-        Number
-        Boolean
-        Integer
-        Object
-        Array
-        Enum
-        anyOf
-
-    """
-
-    name: str
-    type: str
-    required: bool
-    description: str | None = None
-    enum: list[str] | None = None
-
-@dataclass
-class Function:
-    """Represents a function that can be called by the model."""
-
-    name: str
-    parameters: list[Parameter]
-    description: str | None = None
-
-    def to_dict(self) -> dict[str, object]:
-        """Convert the function to the format expected by OpenAI API."""
-        properties = {}
-        required = []
-
-        for param in self.parameters:
-            param_dict = {"type": param.type}
-            if param.description:
-                param_dict["description"] = param.description
-            if param.enum:
-                param_dict["enum"] = param.enum
-
-            properties[param.name] = param_dict
-            if param.required:
-                required.append(param.name)
-
-        parameters_dict = {
-            "type": "object",
-            "properties": properties,
-        }
-        if required:
-            parameters_dict["required"] = required
-        parameters_dict["additionalProperties"] = False
-
-        return {
-            "type": "function",
-            "function": {
-                "name": self.name,
-                **({"description": self.description} if self.description else {}),
-                "parameters": parameters_dict,
-            },
-        }
-
-
-@dataclass
-class FunctionCallResult:
-    """The function call details extracted from the model's response."""
-
-    name: str
-    arguments: dict[str, object]
-    call_id: str
-
-@dataclass
-class FunctionCallResponse:
-    """Response containing just the essential function call information and usage stats."""
-
-    function_call: FunctionCallResult
-    input_tokens: int
-    output_tokens: int
-    input_cost: float
-    output_cost: float
 
 
 @Model.register(OPENAI_FUNCTIONS)

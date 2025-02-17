@@ -75,6 +75,15 @@ def get_default_model_config(api_key_name: str) -> chat_pb2:
         )
     raise ValueError(f"Unknown API key name: {api_key_name}")
 
+def get_mock_model_config(mock_responses: list[str]) -> chat_pb2:
+    """Get a mock model config."""
+    return chat_pb2.ModelConfig(
+        model_type='MockAsyncOpenAICompletionWrapper',
+        model_name='mock-model',
+        model_parameters=chat_pb2.ModelParameters(
+            mock_responses=mock_responses,
+        ),
+    )
 
 @fixture
 async def temp_sqlite_db_path():
@@ -210,8 +219,8 @@ class TestCompletionService:
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         request = chat_pb2.ChatRequest(
             model_configs=[
-                get_default_model_config('OPENAI_API_KEY'),
-                get_default_model_config('OPENAI_API_KEY'),
+                get_mock_model_config(mock_responses=['2 + 2 = 4']),
+                get_mock_model_config(mock_responses=['4']),
             ],
             messages=[
                 chat_pb2.ChatMessage(
@@ -248,10 +257,7 @@ class TestCompletionService:
 
         # First request with multiple models
         request1 = chat_pb2.ChatRequest(
-            model_configs=[
-                get_default_model_config('OPENAI_API_KEY'),
-                get_default_model_config('OPENAI_API_KEY'),
-            ],
+            model_configs=[get_default_model_config('OPENAI_API_KEY')],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -272,9 +278,7 @@ class TestCompletionService:
         # Second request with single model
         request2 = chat_pb2.ChatRequest(
             conversation_id=conv_id,
-            model_configs=[
-                get_default_model_config('OPENAI_API_KEY'),
-            ],
+            model_configs=[get_default_model_config('OPENAI_API_KEY')],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -297,8 +301,8 @@ class TestCompletionService:
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         request = chat_pb2.ChatRequest(
             model_configs=[
-                get_default_model_config('OPENAI_API_KEY'),
-                get_default_model_config('OPENAI_API_KEY'),
+                get_mock_model_config(mock_responses=['2 + 2 = 4']),
+                get_mock_model_config(mock_responses=['4']),
             ],
             messages=[
                 chat_pb2.ChatMessage(
@@ -327,7 +331,7 @@ class TestCompletionService:
         async def run_cancel_test():  # noqa: ANN202
             stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
             request = chat_pb2.ChatRequest(
-                model_configs=[get_default_model_config('OPENAI_API_KEY')],
+                model_configs=[get_mock_model_config(mock_responses=['2 + 2 = 4'])],
                 messages=[
                     chat_pb2.ChatMessage(
                         role=chat_pb2.Role.USER,
@@ -385,7 +389,7 @@ class TestCompletionService:
     async def test__chat__empty_messages__expect_invalid_argument(self, grpc_channel):  # noqa: ANN001
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         request = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['Mock Response'])],
             messages=[],
         )
         with pytest.raises(grpc.aio.AioRpcError) as exc_info:  # noqa: PT012
@@ -398,7 +402,7 @@ class TestCompletionService:
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         # First message
         request1 = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['2 + 2 = 4', '5'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -519,7 +523,7 @@ class TestCompletionService:
             "Explain technically",
         ]
         request = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['This is a test response'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -695,7 +699,7 @@ class TestCompletionService:
         """Test that history maintains conversation continuity."""
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         request1 = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['2 + 2 = 4'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -710,7 +714,7 @@ class TestCompletionService:
                 conv_id = response.conversation_id
         request2 = chat_pb2.ChatRequest(
             conversation_id=conv_id,
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['5'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -864,7 +868,7 @@ class TestCompletionService:
         """Test entry IDs in a single request-response exchange."""
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         request = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['2 + 2 = 4'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -985,7 +989,7 @@ class TestCompletionService:
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         # Create a conversation
         request = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['2 + 2 = 4'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -1026,7 +1030,7 @@ class TestCompletionService:
         # Create two conversations
         async def create_conversation(message: str) -> str:
             request = chat_pb2.ChatRequest(
-                model_configs=[get_default_model_config('OPENAI_API_KEY')],
+                model_configs=[get_mock_model_config(mock_responses=['Mock Response'])],
                 messages=[
                     chat_pb2.ChatMessage(
                         role=chat_pb2.Role.USER,
@@ -1063,7 +1067,7 @@ class TestCompletionService:
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         # Create a conversation
         request = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['Mock Response'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -1107,7 +1111,7 @@ class TestCompletionService:
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         # Create a conversation with multiple messages
         request = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['Mock Response'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -1127,7 +1131,7 @@ class TestCompletionService:
         # Add second message
         request2 = chat_pb2.ChatRequest(
             conversation_id=conv_id,
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['Mock Response'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -1169,7 +1173,7 @@ class TestCompletionService:
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         # Create a conversation
         request = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['Mock Response'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -1195,7 +1199,7 @@ class TestCompletionService:
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         # Create initial conversation
         request = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['Mock Response'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -1259,7 +1263,7 @@ class TestCompletionService:
 
         # Create a conversation for further tests
         request = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['Mock Response'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -1287,8 +1291,8 @@ class TestCompletionService:
         # Create conversation with multi-model response
         request = chat_pb2.ChatRequest(
             model_configs=[
-                get_default_model_config('OPENAI_API_KEY'),
-                get_default_model_config('OPENAI_API_KEY'),
+                get_mock_model_config(mock_responses=['Mock Response 1']),
+                get_mock_model_config(mock_responses=['Mock Response 2']),
             ],
             messages=[
                 chat_pb2.ChatMessage(
@@ -1338,7 +1342,7 @@ class TestCompletionService:
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         # Create conversation first
         request = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['Mock Response'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -1367,7 +1371,7 @@ class TestCompletionService:
         stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         # Create conversation with single model response
         request = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['Mock Response'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,
@@ -1400,8 +1404,8 @@ class TestCompletionService:
         # Create conversation with multi-model response
         request = chat_pb2.ChatRequest(
             model_configs=[
-                get_default_model_config('OPENAI_API_KEY'),
-                get_default_model_config('OPENAI_API_KEY'),
+                get_mock_model_config(mock_responses=['Mock Response 1']),
+                get_mock_model_config(mock_responses=['Mock Response 2']),
             ],
             messages=[
                 chat_pb2.ChatMessage(
@@ -1524,7 +1528,7 @@ class TestCompletionService:
         """Test chat with nonexistent resource."""
         chat_stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
         request = chat_pb2.ChatRequest(
-            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            model_configs=[get_mock_model_config(mock_responses=['Mock Response'])],
             messages=[
                 chat_pb2.ChatMessage(
                     role=chat_pb2.Role.USER,

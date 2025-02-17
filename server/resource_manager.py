@@ -18,7 +18,6 @@ from server.agents.context_strategy_agent import ContextStrategyAgent, ContextTy
 from server.models.openai import (
     # need to import AsyncOpenAIFunctionWrapper so it is registered
     AsyncOpenAIFunctionWrapper,  # noqa
-    OPENAI_FUNCTIONS,
 )
 from server.utilities import (
     clean_text_from_pdf,
@@ -206,11 +205,6 @@ class ResourceManager:
         self._global_lock = asyncio.Lock()
         self._rag_scorer = rag_scorer
         self._rag_char_threshold = rag_char_threshold
-        if not context_strategy_model_config:
-            self._context_strategy_model_config = {
-                'model_type': OPENAI_FUNCTIONS,
-                'model_name': 'gpt-4o-mini',
-            }
         self._context_strategy_model_config = context_strategy_model_config
         self._resource_locks = LRUCache(maxsize=1000)
         self._work_queue = Queue()

@@ -19,8 +19,7 @@ from server.agents.context_strategy_agent import ContextType
 from server.async_merge import AsyncMerge
 from server.model_config_manager import ModelConfigManager
 from server.supported_models import SupportedModels
-from server.models import ChatChunkResponse, ChatStreamResponseSummary
-from server.models.base import Model
+from server.models import Model, ChatChunkResponse, ChatStreamResponseSummary
 # these need to be imported for the models to be registered
 from server.models.anthropic import AsyncAnthropicCompletionWrapper  # noqa: F401
 from server.models.openai import (
@@ -105,6 +104,12 @@ def inject_context(
     return messages
 
 
+def proto_to_dict(proto_obj) -> dict[str, object]:  # noqa: ANN001
+    """Convert protobuf message to dictionary with proper casing."""
+    from google.protobuf.json_format import MessageToDict
+    return MessageToDict(proto_obj, preserving_proto_field_name=True)
+
+
 class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
     """Represents the agent's chat service."""
 
@@ -168,7 +173,6 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                 chat_pb2.ServerEvent.EventLevel.INFO,
                 "Client connected to event stream",
             )
-
             while not context.cancelled():
                 try:
                     event = await queue.get()
@@ -177,6 +181,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                     break
         finally:
             self.event_subscribers.remove(queue)
+
 
     async def _process_model(
         self,
@@ -192,24 +197,17 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
         """Process a single model's chat request."""
         try:
             params = model_config.model_parameters
-            server_url = params.server_url if params.HasField("server_url") else None
-            temperature = params.temperature if params.HasField("temperature") else None
-            max_tokens = params.max_tokens if params.HasField("max_tokens") else None
-            top_p = params.top_p if params.HasField("top_p") else None
-
             logging.info(f"Request from model `{model_config.model_type}`; `{model_config.model_name}`")  # noqa: E501
+            logging.info(f"Server URL: `{params.server_url if params.HasField("server_url") else None}`")  # noqa: E501
             logging.info(f"Model index: `{model_index}`")
-            logging.info(f"temperature: `{temperature}`")
-            logging.info(f"max_tokens: `{max_tokens}`")
-            logging.info(f"top_p: `{top_p}`")
+            logging.info(f"temperature: `{params.temperature if params.HasField("temperature") else None}`")  # noqa: E501
+            logging.info(f"max_tokens: `{params.max_tokens if params.HasField("max_tokens") else None}`")  # noqa: E501
+            logging.info(f"top_p: `{params.top_p if params.HasField("top_p") else None}`")
 
             model_wrapper = Model.instantiate({
                 'model_type': model_config.model_type,
                 'model_name': model_config.model_name,
-                'server_url': server_url,
-                'temperature': temperature,
-                'max_tokens': max_tokens,
-                'top_p': top_p,
+                **proto_to_dict(params),
             })
 
             # Get conversation history

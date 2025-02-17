@@ -3,7 +3,7 @@ import os
 import time
 from collections.abc import AsyncGenerator
 from anthropic import AsyncAnthropic, Anthropic
-from server.models.base import Model, ChatChunkResponse, ChatStreamResponseSummary
+from server.models import Model, ChatChunkResponse, ChatStreamResponseSummary
 
 
 ANTHROPIC = 'Anthropic'
