@@ -44,16 +44,16 @@ export class ContextManager extends AttachmentManager {
     resetForm() {
         const formDiv = document.getElementById('add-context-form');
         const nameInput = formDiv.querySelector('#context-name');
-        const typeSelect = formDiv.querySelector('#context-type');
+        // const typeSelect = formDiv.querySelector('#context-type');
         formDiv.style.display = 'none';
         nameInput.value = '';
-        typeSelect.selectedIndex = 0;
+        // typeSelect.selectedIndex = 0;
     }
 
     handleNewContext() {
         const form = document.getElementById('add-context-form');
         const name = document.getElementById('context-name').value.trim();
-        const type = document.getElementById('context-type').value;
+        // const type = document.getElementById('context-type').value;
     
         if (!name) {
             UIManager.showNotification('Context name is required', 'error');
@@ -68,7 +68,7 @@ export class ContextManager extends AttachmentManager {
         const context = {
             id: generateUUID(),
             name,
-            type,
+            // type,
             resources: [],
             customInstructions: ''
         };
@@ -130,13 +130,13 @@ export class ContextManager extends AttachmentManager {
         name.textContent = context.name;
         name.title = context.name;
         
-        const type = document.createElement('div');
-        type.className = 'context-type resource-path';
-        type.textContent = context.type;
-        type.title = context.type;
+        // const type = document.createElement('div');
+        // type.className = 'context-type resource-path';
+        // type.textContent = context.type;
+        // type.title = context.type;
         
         content.appendChild(name);
-        content.appendChild(type);
+        // content.appendChild(type);
     
         const useButton = this.createUseButton(context, this.attachContext.bind(this));
         const deleteButton = this.createDeleteButton(context);
