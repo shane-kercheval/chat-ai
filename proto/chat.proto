@@ -97,6 +97,7 @@ message ModelParameters {
     optional int32 max_tokens = 2;
     optional float top_p = 3;
     optional string server_url = 4;  // Only for Local family models
+    repeated string mock_responses = 5;  // This is for testing purposes so the tests can set the expected responses
 }
 
 // used to communicate which model(s) the user wants to use

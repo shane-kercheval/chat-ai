@@ -22,21 +22,25 @@ VALID_STRATEGIES = [ContextType.IGNORE, ContextType.FULL_TEXT, ContextType.RAG]
 class TestContextStrategyBasics:
     """Test basic functionality of the ContextStrategyAgent."""
 
-    @pytest.fixture
-    def agent(self):
-        """Create a basic agent."""
-        model_config = {
-            'model_type': OPENAI_FUNCTIONS,
-            'model_name': TEST_MODEL,
-        }
-        return ContextStrategyAgent(model_config=model_config)
-
-    async def test_single_file_summary(self, agent: ContextStrategyAgent):
+    async def test_single_file_summary(self):
         """Test getting strategy for a single file."""
+        files = ['report.pdf']
+        model_config = {
+            'model_type': 'MockAsyncOpenAIFunctionWrapper',
+            'model_name': 'MockModel',
+            'mock_responses': {
+                'name': 'not_used',
+                'arguments': {
+                    'resource_name': files[0],
+                    'retrieval_strategy': ContextType.FULL_TEXT.value,
+                    'reasoning': 'It is a report.',
+                },
+            },
+        }
         messages = [
             {"role": "user", "content": "Can you summarize this document?"},
         ]
-        files = ['report.pdf']
+        agent = ContextStrategyAgent(model_config=model_config)
         summary = await agent(messages=messages, resource_names=files)
         assert isinstance(summary, ContextStrategySummary)
         assert len(summary.strategies) == 1
@@ -50,12 +54,29 @@ class TestContextStrategyBasics:
         assert summary.total_output_cost > 0
         assert summary.total_cost == pytest.approx(summary.total_input_cost + summary.total_output_cost)  # noqa: E501
 
-    async def test_multiple_files_summary(self, agent: ContextStrategyAgent):
+
+    async def test_multiple_files_summary(self):
         """Test getting strategy for multiple files."""
         messages = [
             {"role": "user", "content": "What's the total revenue mentioned in these reports?"},
         ]
         files = ["q1_report.pdf", "q2_report.pdf", "q3_report.pdf"]
+        model_config = {
+            'model_type': 'MockAsyncOpenAIFunctionWrapper',
+            'model_name': 'MockModel',
+            'mock_responses': [
+                {
+                    'name': 'not_used',
+                    'arguments': {
+                        'resource_name': f,
+                        'retrieval_strategy': ContextType.FULL_TEXT.value,
+                        'reasoning': 'It is a report.',
+                    },
+                }
+                for f in files
+            ],
+        }
+        agent = ContextStrategyAgent(model_config=model_config)
         summary = await agent(messages=messages, resource_names=files)
         assert len(summary.strategies) == 3
         assert summary.total_cost == pytest.approx(summary.total_input_cost + summary.total_output_cost)  # noqa: E501
@@ -66,8 +87,12 @@ class TestContextStrategyBasics:
 
 
 @pytest.mark.asyncio
-class TestRetrievalStrategies:
-    """Test different retrieval strategies based on file types and questions."""
+class TestEvalRetrievalStrategies:
+    """
+    Evaluate different retrieval strategies based on file types and questions.
+
+    TODO: Move these "evals" out of unit tests and into a separate evaluation script.
+    """
 
     @pytest.fixture
     def agent(self):

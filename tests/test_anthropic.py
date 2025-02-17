@@ -3,7 +3,7 @@ import asyncio
 import os
 import pytest
 from dotenv import load_dotenv
-from server.models.base import Model
+from server.models import Model
 from server.models.anthropic import (
     ANTHROPIC,
     AsyncAnthropicCompletionWrapper,

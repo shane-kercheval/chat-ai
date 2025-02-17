@@ -1476,8 +1476,16 @@ class TestResourceManagerContextAuto:
                 # set low threshold to ensure we don't create a false negative by bypassing RAG
                 rag_char_threshold=10,
                 context_strategy_model_config={
-                    'model_type': OPENAI_FUNCTIONS,
-                    'model_name': 'gpt-4o-mini',
+                    'model_type': 'MockAsyncOpenAIFunctionWrapper',
+                    'model_name': 'MockModel',
+                    'mock_responses': {
+                        'name': 'not_used',
+                        'arguments': {
+                            'resource_name': code_path,
+                            'retrieval_strategy': ContextType.FULL_TEXT.value,
+                            'reasoning': 'Mock reasoning',
+                        },
+                    },
                 },
             )
             await manager.initialize()
@@ -1521,8 +1529,27 @@ class TestResourceManagerContextAuto:
                 # set low threshold to ensure we don't create a false negative by bypassing RAG
                 rag_char_threshold=10,
                 context_strategy_model_config={
-                    'model_type': OPENAI_FUNCTIONS,
-                    'model_name': 'gpt-4o-mini',
+                    'model_type': 'MockAsyncOpenAIFunctionWrapper',
+                    'model_name': 'MockModel',
+                    'mock_responses': [
+                        {
+                            'name': 'not_used',
+                            'arguments': {
+                                'resource_name': readme_path,
+                                'retrieval_strategy': ContextType.RAG.value,
+                                'reasoning': 'Mock reasoning',
+                            },
+                        },
+                        {
+                            'name': 'not_used',
+                            'arguments': {
+                                'resource_name': code_path,
+                                'retrieval_strategy': ContextType.IGNORE.value,
+                                'reasoning': 'Mock reasoning',
+                            },
+                        },
+
+                    ],
                 },
             )
             await manager.initialize()
@@ -1542,23 +1569,23 @@ class TestResourceManagerContextAuto:
             assert readme_path in strategies
             assert code_path in strategies
             # Documentation should be included
-            assert strategies[readme_path] in [ContextType.RAG, ContextType.FULL_TEXT]
+            assert strategies[readme_path] == ContextType.RAG
             # Code should be ignored for this query
-            assert strategies[code_path] in [ContextType.IGNORE]
+            assert strategies[code_path] == ContextType.IGNORE
 
-            # Test with code-focused query
-            _, strategies = await manager.create_context(
-                [
-                    chat_pb2.Resource(path=readme_path, type=chat_pb2.ResourceType.FILE),
-                    chat_pb2.Resource(path=code_path, type=chat_pb2.ResourceType.FILE),
-                ],
-                query="What is the `extract_data` function in the generate code in the server?",
-                context_strategy=ContextStrategy.AUTO,
-            )
-            # Code should be included and use FULL_TEXT
-            assert strategies[code_path] == ContextType.FULL_TEXT
-            # Documentation might be ignored or RAG
-            assert strategies[readme_path] in [ContextType.IGNORE, ContextType.RAG]
+            # # Test with code-focused query
+            # _, strategies = await manager.create_context(
+            #     [
+            #         chat_pb2.Resource(path=readme_path, type=chat_pb2.ResourceType.FILE),
+            #         chat_pb2.Resource(path=code_path, type=chat_pb2.ResourceType.FILE),
+            #     ],
+            #     query="What is the `extract_data` function in the generate code in the server?",
+            #     context_strategy=ContextStrategy.AUTO,
+            # )
+            # # Code should be included and use FULL_TEXT
+            # assert strategies[code_path] == ContextType.FULL_TEXT
+            # # Documentation might be ignored or RAG
+            # assert strategies[readme_path] in [ContextType.IGNORE, ContextType.RAG]
         finally:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)

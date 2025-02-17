@@ -29,6 +29,9 @@ linting:
 	uv run ruff check server
 	uv run ruff check tests
 
+test-context-agent:
+	uv run pytest --durations=0 --durations-min=0.1 tests/test_context_strategy_agent.py
+
 test-server: proto
 	uv run pytest --durations=0 --durations-min=0.1 tests/test_grpc_service.py
 

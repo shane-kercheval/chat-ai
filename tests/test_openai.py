@@ -2,17 +2,20 @@
 import asyncio
 import pytest
 from dotenv import load_dotenv
-from server.models import system_message, user_message
-from server.models.base import Model
+from server.models import (
+    Model,
+    system_message,
+    user_message,
+    Function,
+    Parameter,
+    FunctionCallResponse,
+    FunctionCallResult,
+)
 from server.models.openai import (
     AsyncOpenAICompletionWrapper,
     ChatChunkResponse,
     ChatStreamResponseSummary,
     AsyncOpenAIFunctionWrapper,
-    Function,
-    Parameter,
-    FunctionCallResponse,
-    FunctionCallResult,
     OPENAI,
     OPENAI_FUNCTIONS,
 )
