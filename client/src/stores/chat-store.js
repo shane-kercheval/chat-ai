@@ -40,7 +40,7 @@ export class ChatStore extends EventEmitter {
                     requestEntryId: data.requestEntryId,
                     entryId: data.entryId
                 });
-            } else if (data.type === 'tool_event') {  // FIXED: Changed from data.tool_event to data.type === 'tool_event'
+            } else if (data.type === 'tool_event') {
                 this.emit('tool-event', {
                     type: data.tool_event.type,
                     iteration: data.tool_event.iteration,
