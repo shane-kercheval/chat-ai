@@ -28,7 +28,15 @@ const completion_client = new CompletionServiceClient('localhost:50051', grpc.cr
 const context_client = new ContextServiceClient('localhost:50051', grpc.credentials.createInsecure());
 const config_client = new ConfigurationServiceClient('localhost:50051', grpc.credentials.createInsecure());
 
-function sendChatRequest(conversationId, modelConfigs, messageText, instructions = [], resources = [], contextStrategy = null) {
+function sendChatRequest(
+        conversationId,
+        modelConfigs,
+        messageText,
+        instructions = [],
+        resources = [],
+        contextStrategy = null,
+        enableTools = false)
+    {
     // Create the chat message
     const chatMessage = new ChatMessage();
     chatMessage.setRole(1); // USER role
@@ -39,6 +47,7 @@ function sendChatRequest(conversationId, modelConfigs, messageText, instructions
     request.setConversationId(conversationId);
     request.setMessagesList([chatMessage]);
     request.setInstructionsList(instructions);
+    request.setEnableTools(enableTools);
 
     // Convert each model config to protobuf ModelConfig
     const protoModelConfigs = modelConfigs.map(config => {

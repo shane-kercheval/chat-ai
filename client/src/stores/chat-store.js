@@ -131,6 +131,7 @@ export class ChatStore extends EventEmitter {
             // Combine all resources
             const allResources = [...attachedResources, ...contextResources];
             const contextStrategy = this.attachmentStore.getContextStrategy();
+            const toolsEnabled = this.attachmentStore.getToolsEnabled(); // Add this line
             
             await this.ipcService.sendMessage(
                 content, 
@@ -138,7 +139,8 @@ export class ChatStore extends EventEmitter {
                 this.currentConversationId,
                 allInstructions,
                 allResources,
-                contextStrategy
+                contextStrategy,
+                toolsEnabled
             );
         } catch (error) {
             this.emit('error', error);

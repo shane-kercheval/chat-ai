@@ -1439,7 +1439,7 @@ code {
 .add-attachment-button,
 .clear-attachments-button,
 .context-strategy-button,
-.web-search-button {
+.mcp-tool-button {
     background: none !important;
     border: none;
     color: #666;
@@ -1457,7 +1457,7 @@ code {
 .add-attachment-button:hover,
 .clear-attachments-button:hover,
 .context-strategy-button:hover,
-.web-search-button:hover {
+.mcp-tool-button:hover {
     background: rgba(0,0,0,0.05) !important;
 }
 
@@ -1472,7 +1472,7 @@ code {
 }
 
 .context-strategy-button svg,
-.web-search-button svg {
+.mcp-tool-button svg {
     width: 18px;
     height: 18px;
     stroke: currentColor;
@@ -1484,7 +1484,7 @@ code {
 .add-attachment-button .icon-tooltip,
 .clear-attachments-button .icon-tooltip,
 .context-strategy-button .icon-tooltip,
-.web-search-button .icon-tooltip {
+.mcp-tool-button .icon-tooltip {
     position: absolute;
     left: calc(100% + 4px);
     top: 50%;
@@ -1503,7 +1503,7 @@ code {
 .add-attachment-button:hover .icon-tooltip,
 .clear-attachments-button:hover .icon-tooltip,
 .context-strategy-button:hover .icon-tooltip,
-.web-search-button:hover .icon-tooltip {
+.mcp-tool-button:hover .icon-tooltip {
     display: block;
 }
 
@@ -1524,19 +1524,19 @@ code {
 }
 
 /* Web search active state */
-.web-search-button.active {
+.mcp-tool-button.active {
     color: #1976d2;
     background: rgba(25, 118, 210, 0.05) !important;
 }
 
 /* Animation for state changes */
 .context-strategy-button svg,
-.web-search-button svg {
+.mcp-tool-button svg {
     transition: transform 0.2s;
 }
 
 .context-strategy-button:active svg,
-.web-search-button:active svg {
+.mcp-tool-button:active svg {
     transform: scale(0.9);
 }
 

@@ -285,6 +285,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             logging.info(f"temperature: `{params.temperature if params.HasField("temperature") else None}`")  # noqa: E501
             logging.info(f"max_tokens: `{params.max_tokens if params.HasField("max_tokens") else None}`")  # noqa: E501
             logging.info(f"top_p: `{params.top_p if params.HasField("top_p") else None}`")
+            logging.info(f"enable_tools: `{enable_tools}`")
 
             model_wrapper = Model.instantiate({
                 'model_type': model_config.model_type,
@@ -477,8 +478,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                     response_id=response_id,
                     resource_context=resource_context,
                     context=context,
-                    # enable_tools=request.HasField('enable_tools') and request.enable_tools,
-                    enable_tools=True,
+                    enable_tools=request.HasField('enable_tools') and request.enable_tools,
                 )
                 for i, config in enumerate(request.model_configs)
             ]
