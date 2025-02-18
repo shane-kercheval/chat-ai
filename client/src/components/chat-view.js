@@ -220,28 +220,61 @@ export class ChatView {
             let content = '';
             switch(data.type) {
                 case 0: // THINK_START
-                    content = `\n\n*Thinking iteration ${data.iteration + 1}...*`;
+                    content = `<div><em>Thinking iteration ${data.iteration + 1}...</em></div>`;
                     break;
                 case 1: // THOUGHT
-                    content = `\n\n**Thought:** ${data.thought}`;
+                    content = [
+                        '<div>',
+                        `<strong>Thought:</strong>`,
+                        data.thought,
+                        '</div>'
+                    ].join('');
+            
                     if (data.toolName) {
-                        content += `\n\n**Using tool:** \`${data.toolName}\``;
-                        if (Object.keys(data.toolArgs).length > 0) {
-                            content += `\n<div class="tool-args">Arguments: ${JSON.stringify(data.toolArgs, null, 2)}</div>`;
-                        }
+                        content += [
+                            '<div>',
+                            '<strong>Tool Call:</strong>',
+                            `<span class="tool-name">tool: ${data.toolName}</span><br>`,
+                            '<span class="tool-label">arguments:</span>',
+                            '<pre>',
+                            JSON.stringify(data.toolArgs, null, 2),
+                            '</pre>',
+                            '</div>'
+                        ].join('');
                     }
                     break;
                 case 2: // TOOL_EXECUTION_START
-                    content = `\n\n*Executing \`${data.toolName}\`...*`;
+                    content = [
+                        '<div>',
+                        '<strong>Executing Tool:</strong>',
+                        `<span class="tool-name">${data.toolName}</span>`,
+                        '</div>'
+                    ].join('');
                     break;
                 case 3: // TOOL_EXECUTION_RESULT
-                    content = `\n\n**Result from \`${data.toolName}\`:**\n\`\`\`\n${data.result}\n\`\`\``;
+                    let resultValue = data.result;
+                    try {
+                        const match = data.result.match(/text='(\d+)'/);
+                        if (match) {
+                            resultValue = match[1];
+                        }
+                    } catch (e) {
+                        console.error('Error parsing result:', e);
+                    }
+                    
+                    content = [
+                        '<div>',
+                        '<strong>Tool Result:</strong>',
+                        `<span class="tool-name">tool: ${data.toolName}</span><br>`,
+                        '<span class="tool-label">result:</span>',
+                        '<pre>',
+                        `${resultValue} characters`,
+                        '</pre>',
+                        '</div>'
+                    ].join('');
                     break;
-                default:
-                    console.warn('Unknown tool event type:', data.type);
-                    return;
             }
-    
+
             const messageDiv = this.currentMessages.get(data.modelIndex);
             if (!messageDiv) {
                 console.error('No message div found for model index:', data.modelIndex);
@@ -254,7 +287,7 @@ export class ChatView {
                 return;
             }
 
-            // Append the tool event content to the tool events section
+            // Append the tool event content
             const previousContent = toolEventsContent.innerHTML || '';
             const updatedContent = previousContent + marked.parse(content);
             toolEventsContent.innerHTML = updatedContent;

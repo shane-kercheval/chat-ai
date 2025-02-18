@@ -2036,16 +2036,17 @@ code {
     background: #555;
 }
 
-/* Tool Events Styles */
+/* Tool Events Container */
 .tool-events-container {
     margin: 0 0 30px 0;
     border: 1px solid #e0e0e0;
     border-radius: 6px;
     overflow: hidden;
     background: #f8f9fa;
-    display: none; /* Hidden by default, shown when tool events exist */
+    display: none;
 }
 
+/* Header Styles */
 .tool-events-header {
     display: flex;
     justify-content: space-between;
@@ -2071,6 +2072,7 @@ code {
     height: 14px;
 }
 
+/* Toggle Button */
 .tool-events-toggle {
     display: flex;
     align-items: center;
@@ -2099,6 +2101,11 @@ code {
     transform: rotate(180deg);
 }
 
+.tool-events-container.collapsed .tool-events-content {
+    display: none;
+}
+
+/* Content Area */
 .tool-events-content {
     padding: 12px;
     font-family: inherit;
@@ -2108,74 +2115,50 @@ code {
     background: #fff;
 }
 
-.tool-events-container.collapsed .tool-events-content {
-    display: none;
-}
-
-/* Style each type of tool event differently */
-.tool-events-content p {
-    margin: 6px 0;
-    padding: 4px 8px;
-    border-radius: 4px;
+.tool-events-content > * {
     background: #f8f9fa;
+    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 16px;
 }
 
-/* Thinking iterations */
-.tool-events-content p em:first-child {
+.tool-events-content > *:last-child {
+    margin-bottom: 0;
+}
+
+/* Thinking Iterations */
+.tool-events-content em {
     color: #6741d9;
     font-style: normal;
     font-weight: 500;
     display: block;
-    margin-bottom: 2px;
 }
 
-/* Thought content */
-.tool-events-content p strong:first-child {
+/* Section Headers */
+.tool-events-content strong {
     color: #2b8a3e;
-    font-weight: 500;
+    font-weight: 600;
     display: block;
-    margin-bottom: 2px;
+    margin-bottom: 8px;
 }
 
-/* Tool execution */
-.tool-events-content p em:first-child:not(:only-child) {
+/* Tool Info */
+.tool-name,
+.tool-label {
     color: #1864ab;
-    font-style: normal;
-    font-weight: 500;
-    display: block;
-    margin-bottom: 2px;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    margin-bottom: 4px;
 }
 
-/* Tool results */
+/* Code Blocks */
 .tool-events-content pre {
-    margin: 6px 0;
-    padding: 10px;
-    background: #f8f9fa;
+    margin: 8px 0 0 0;
+    padding: 8px;
+    background: #fff;
     border: 1px solid #e9ecef;
     border-radius: 4px;
     font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
     font-size: 12px;
-    line-height: 1.4;
-}
-
-/* .tool-events-content code {
-    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-    font-size: 12px;
-    padding: 2px 4px;
-    background: #f1f3f5;
-    border-radius: 3px;
-} */
-
-/* Tool name styling */
-.tool-events-content code.tool-name {
-    color: #1864ab;
-    background: none;
-    padding: 0;
-}
-
-/* Arguments styling */
-.tool-events-content .tool-args {
-    font-family: inherit;
-    color: #666;
-    margin-left: 16px;
 }
