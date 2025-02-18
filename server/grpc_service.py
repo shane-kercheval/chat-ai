@@ -113,6 +113,61 @@ def proto_to_dict(proto_obj) -> dict[str, object]:  # noqa: ANN001
     return MessageToDict(proto_obj, preserving_proto_field_name=True)
 
 
+class ToolEventHandler:
+    def __init__(self, conv_id: str, model_index: int, request_id: str, response_id: str):
+        self.consolidated_output = []
+        self.conv_id = conv_id
+        self.model_index = model_index
+        self.request_id = request_id
+        self.response_id = response_id
+        self.response_queue = asyncio.Queue()
+
+    async def handle_event(self, event: AgentEvent) -> None:
+        """Handle tool events - build output string and queue response for client."""
+        # Create response for client
+        response = chat_pb2.ChatStreamResponse()
+        response.conversation_id = self.conv_id
+        response.model_index = self.model_index
+        response.entry_id = self.response_id
+        response.request_entry_id = self.request_id
+
+        tool_event = response.tool_event
+        if isinstance(event, ThinkStartEvent):
+            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.THINK_START
+            tool_event.iteration = event.iteration
+            self.consolidated_output.append(f"\nThinking iteration {event.iteration + 1}...")
+        elif isinstance(event, ThoughtEvent):
+            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.THOUGHT
+            tool_event.iteration = event.iteration
+            tool_event.thought = event.thought
+            self.consolidated_output.append(f"\nThought: {event.thought}")
+            if event.tool_name:
+                tool_event.tool_name = event.tool_name
+                tool_event.tool_args.update(event.tool_args)
+                self.consolidated_output.append(
+                    f"\nUsing tool: {event.tool_name} with args {event.tool_args}"
+                )
+        elif isinstance(event, ToolExecutionStartEvent):
+            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_START
+            tool_event.iteration = event.iteration
+            tool_event.tool_name = event.tool_name
+            tool_event.tool_args.update(event.tool_args)
+            self.consolidated_output.append(f"\nExecuting {event.tool_name}...")
+        elif isinstance(event, ToolExecutionResultEvent):
+            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_RESULT
+            tool_event.iteration = event.iteration
+            tool_event.tool_name = event.tool_name
+            tool_event.result = str(event.result)
+            self.consolidated_output.append(f"\nResult from {event.tool_name}: {event.result}")
+
+        # Queue the response for the client
+        await self.response_queue.put(response)
+
+    def get_output(self) -> str:
+        """Get the consolidated output string."""
+        return "\n".join(self.consolidated_output)
+
+
 class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
     """Represents the agent's chat service."""
 
@@ -185,23 +240,25 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
         finally:
             self.event_subscribers.remove(queue)
 
+
     async def _run_function_agent(
         self,
         messages: list[dict],
         model_config: chat_pb2.ModelConfig,
-        yield_queue: asyncio.Queue,
+        conv_id: str,
+        model_index: int,
+        request_id: str,
+        response_id: str,
     ) -> str:
-        """
-        Run function agent and return consolidated output from tools and final response.
-        Also streams tool events through the yield queue.
-        """
-        consolidated_output = []
+        """Run function agent and return consolidated output."""
+        # Create event handler that will manage both output string and client responses
+        event_handler = ToolEventHandler(conv_id, model_index, request_id, response_id)
 
         async with MCPClientManager() as manager:
             # await manager.connect_servers(self.config.mcp_config_path)
             await manager.connect_servers('/Users/shanekercheval/repos/chat-ai/server/mcp_server/mcp_fake_server_config.json')
-            mcp_tools = await manager.list_tools()
 
+            mcp_tools = await manager.list_tools()
             if not mcp_tools:
                 raise ValueError("No tools found on any connected MCP servers")
 
@@ -218,38 +275,6 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                 func=list_tools,
             )
             functions.append(list_tools_function)
-            async def event_callback(event: AgentEvent) -> None:
-                # Stream event to client
-                # response = chat_pb2.ChatStreamResponse()
-                # tool_event = response.tool_event
-                if isinstance(event, ThinkStartEvent):
-                    # tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.THINK_START
-                    # tool_event.iteration = event.iteration
-                    consolidated_output.append(f"\nThinking iteration {event.iteration + 1}...")
-                elif isinstance(event, ThoughtEvent):
-                    # tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.THOUGHT
-                    # tool_event.iteration = event.iteration
-                    # tool_event.thought = event.thought
-                    consolidated_output.append(f"\nThought: {event.thought}")
-                    if event.tool_name:
-                        # tool_event.tool_name = event.tool_name
-                        # tool_event.tool_args.update(event.tool_args)
-                        consolidated_output.append(
-                            f"\nUsing tool: {event.tool_name} with args {event.tool_args}"
-                        )
-                elif isinstance(event, ToolExecutionStartEvent):
-                    # tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_START
-                    # tool_event.iteration = event.iteration
-                    # tool_event.tool_name = event.tool_name
-                    # tool_event.tool_args.update(event.tool_args)
-                    consolidated_output.append(f"\nExecuting {event.tool_name}...")
-                elif isinstance(event, ToolExecutionResultEvent):
-                    # tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_RESULT
-                    # tool_event.iteration = event.iteration
-                    # tool_event.tool_name = event.tool_name
-                    # tool_event.result = str(event.result)
-                    consolidated_output.append(f"\nResult from {event.tool_name}: {event.result}")
-                # await yield_queue.put(response)
 
             agent = FunctionAgent(
                 model_config=ModelConfiguration(
@@ -257,12 +282,20 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                     api_key=os.getenv("OPENAI_API_KEY"),
                 ),
                 tools=functions,
-                callback=event_callback,
+                callback=event_handler.handle_event,
             )
-            result = await agent(messages=messages)
+            agent_task = asyncio.create_task(agent(messages=messages))
+            # Stream responses from the queue while agent is running
+            while not agent_task.done():
+                response = await event_handler.response_queue.get()
+                yield response, None
+
+            result = await agent_task
             if result.answer:
-                consolidated_output.append(f"\n\nFinal tool-based answer: {result.answer}")
-        return "\n".join(consolidated_output)
+                event_handler.consolidated_output.append(f"\n\nFinal tool-based answer: {result.answer}")
+            
+            # Yield final response with consolidated output
+            yield None, event_handler.get_output()
 
     async def _process_model(
         self,
@@ -309,13 +342,20 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             if enable_tools:
                 print("Tools enabled")
                 # Create queue for tool events
-                tool_event_queue = asyncio.Queue()
-                # Run function agent and get consolidated output
-                tool_output = await self._run_function_agent(
+                tool_output = None
+                async for response, output in self._run_function_agent(
                     messages=model_messages,
                     model_config=model_config,
-                    yield_queue=tool_event_queue,
-                )
+                    conv_id=conv_id,
+                    model_index=model_index,
+                    request_id=request_id,
+                    response_id=response_id,
+                ):
+                    if response:
+                        yield response  # Stream the tool events to client
+                    if output:
+                        tool_output = output  # Capture the final consolidated output
+
                 tool_output = f"# Tool Processing Results:\n\nThe following is additional information from a tool used, please incorporate the information into your response.\n\n{tool_output}\n\n"  # noqa: E501
                 print(f"Tool output: {tool_output}")
                 model_messages[-1]['content'] = f"{model_messages[-1]['content']}\n\n{tool_output}"

@@ -141,6 +141,20 @@ message ChatStreamResponse {
         string content = 1;
         float logprob = 2;
     }
+    message ToolEvent {
+        enum ToolEventType {
+            THINK_START = 0;
+            THOUGHT = 1;
+            TOOL_EXECUTION_START = 2;
+            TOOL_EXECUTION_RESULT = 3;
+        }
+        ToolEventType type = 1;
+        int32 iteration = 2;
+        optional string thought = 3;
+        optional string tool_name = 4;
+        map<string, string> tool_args = 5;
+        optional string result = 6;
+    }
     message Summary {
         int32 input_tokens = 1;
         int32 output_tokens = 2;
@@ -158,10 +172,11 @@ message ChatStreamResponse {
         Chunk chunk = 2;
         Summary summary = 3;
         ChatError error = 4;
+        ToolEvent tool_event = 5;
     }
-    int32 model_index = 5;
-    string entry_id = 6;
-    string request_entry_id = 7;
+    int32 model_index = 6;
+    string entry_id = 7;
+    string request_entry_id = 8;
 }
 
 // Information about models that are supported by the service

@@ -49,6 +49,25 @@ function setupIpcHandlers(mainWindow) {
                         requestEntryId: response.getRequestEntryId(),
                         entryId: response.getEntryId(),
                     });
+                } else if (response.hasToolEvent()) {
+                    const toolEvent = response.getToolEvent();
+                    mainWindow.webContents.send('chat-response', {
+                        type: 'tool_event',
+                        tool_event: {
+                            type: toolEvent.getType(),
+                            iteration: toolEvent.getIteration(),
+                            thought: toolEvent.getThought(),
+                            tool_name: toolEvent.getToolName(),
+                            tool_args: toolEvent.getToolArgs ? 
+                                Object.fromEntries(toolEvent.getToolArgs().entries()) : 
+                                {},
+                            result: toolEvent.getResult()
+                        },
+                        modelIndex: response.getModelIndex(),
+                        requestEntryId: response.getRequestEntryId(),
+                        entryId: response.getEntryId(),
+                        conversation_id: response.getConversationId()
+                    });
                 } else if (response.hasSummary()) {
                     const summary = response.getSummary();
                     mainWindow.webContents.send('chat-response', {

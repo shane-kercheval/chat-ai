@@ -209,6 +209,45 @@ export class ChatView {
             );
         });
 
+        this.store.on('tool-event', (data) => {
+            console.log('ChatView received tool event:', data); // Debug log
+            
+            if (data.requestEntryId) {
+                this.addDeleteButtonToLastUserMessage(data.requestEntryId);
+            }
+            
+            let content = '';
+            switch(data.type) {
+                case 0: // THINK_START
+                    content = `\n\n*Thinking iteration ${data.iteration + 1}...*`;
+                    break;
+                case 1: // THOUGHT
+                    content = `\n\n**Thought:** ${data.thought}`;
+                    if (data.toolName) {
+                        content += `\n**Using tool:** \`${data.toolName}\``;
+                        if (Object.keys(data.toolArgs).length > 0) {
+                            content += `\n**Arguments:** \`${JSON.stringify(data.toolArgs, null, 2)}\``;
+                        }
+                    }
+                    break;
+                case 2: // TOOL_EXECUTION_START
+                    content = `\n\n*Executing \`${data.toolName}\`...*`;
+                    break;
+                case 3: // TOOL_EXECUTION_RESULT
+                    content = `\n\n**Result from \`${data.toolName}\`:**\n\`\`\`\n${data.result}\n\`\`\``;
+                    break;
+                default:
+                    console.warn('Unknown tool event type:', data.type);
+                    return;
+            }
+    
+            this.appendToCurrentMessage(
+                content,
+                data.modelIndex,
+                data.entryId
+            );
+        });
+
         this.store.on('summary', (data) => {
             const messageDiv = this.currentMessages.get(data.modelIndex);
             if (messageDiv) {

@@ -40,6 +40,18 @@ export class ChatStore extends EventEmitter {
                     requestEntryId: data.requestEntryId,
                     entryId: data.entryId
                 });
+            } else if (data.type === 'tool_event') {  // FIXED: Changed from data.tool_event to data.type === 'tool_event'
+                this.emit('tool-event', {
+                    type: data.tool_event.type,
+                    iteration: data.tool_event.iteration,
+                    thought: data.tool_event.thought,
+                    toolName: data.tool_event.tool_name,
+                    toolArgs: data.tool_event.tool_args,
+                    result: data.tool_event.result,
+                    modelIndex: data.modelIndex,
+                    requestEntryId: data.requestEntryId,
+                    entryId: data.entryId
+                });
             } else if (data.type === 'summary') {
                 this.updateTotals(data.summary);
                 this.emit('summary', {
@@ -54,6 +66,8 @@ export class ChatStore extends EventEmitter {
                     modelIndex: data.modelIndex,
                     requestEntryId: data.requestEntryId
                 });
+            } else {
+                console.info('Unknown response type:', data.type);
             }
         });
 
