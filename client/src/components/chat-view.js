@@ -225,7 +225,7 @@ export class ChatView {
                 case 1: // THOUGHT
                     content = `\n\n**Thought:** ${data.thought}`;
                     if (data.toolName) {
-                        content += `\n**Using tool:** \`${data.toolName}\``;
+                        content += `\n\n**Using tool:** \`${data.toolName}\``;
                         if (Object.keys(data.toolArgs).length > 0) {
                             content += `\n<div class="tool-args">Arguments: ${JSON.stringify(data.toolArgs, null, 2)}</div>`;
                         }

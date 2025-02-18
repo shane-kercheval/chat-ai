@@ -58,6 +58,8 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 ## TODO
 
 - [ ] Clean up unused resources periodically (e.g. stored files and chunks)
+- [ ] MCP Agent usage does not count in session summary
+- [ ] I'm not sure if MCP Agent works with multiple models at the same time.
 
 **Models**
 
