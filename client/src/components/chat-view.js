@@ -210,7 +210,8 @@ export class ChatView {
         });
 
         this.store.on('tool-event', (data) => {
-            console.log('ChatView received tool event:', data); // Debug log
+            // Stop loading spinner on first tool event
+            this.setLoading(false);
             
             if (data.requestEntryId) {
                 this.addDeleteButtonToLastUserMessage(data.requestEntryId);
@@ -226,7 +227,7 @@ export class ChatView {
                     if (data.toolName) {
                         content += `\n**Using tool:** \`${data.toolName}\``;
                         if (Object.keys(data.toolArgs).length > 0) {
-                            content += `\n**Arguments:** \`${JSON.stringify(data.toolArgs, null, 2)}\``;
+                            content += `\n<div class="tool-args">Arguments: ${JSON.stringify(data.toolArgs, null, 2)}</div>`;
                         }
                     }
                     break;
@@ -241,11 +242,41 @@ export class ChatView {
                     return;
             }
     
-            this.appendToCurrentMessage(
-                content,
-                data.modelIndex,
-                data.entryId
-            );
+            const messageDiv = this.currentMessages.get(data.modelIndex);
+            if (!messageDiv) {
+                console.error('No message div found for model index:', data.modelIndex);
+                return;
+            }
+
+            const toolEventsContent = messageDiv.querySelector('.tool-events-content');
+            if (!toolEventsContent) {
+                console.error('No tool events content div found');
+                return;
+            }
+
+            // Append the tool event content to the tool events section
+            const previousContent = toolEventsContent.innerHTML || '';
+            const updatedContent = previousContent + marked.parse(content);
+            toolEventsContent.innerHTML = updatedContent;
+
+            // Show the tool events container if it was hidden
+            const toolEventsContainer = messageDiv.querySelector('.tool-events-container');
+            if (toolEventsContainer) {
+                toolEventsContainer.style.display = 'block';
+            }
+
+            // Update syntax highlighting for code blocks
+            toolEventsContent.querySelectorAll('pre code').forEach((block) => {
+                // Remove the data-highlighted attribute before highlighting again
+                block.removeAttribute('data-highlighted');
+                hljs.highlightElement(block);
+            });
+
+            if (!this.isManualScrolling) {
+                requestAnimationFrame(() => {
+                    this.elements.chatDiv.scrollTop = this.elements.chatDiv.scrollHeight;
+                });
+            }
         });
 
         this.store.on('summary', (data) => {
@@ -496,6 +527,44 @@ export class ChatView {
             contentDiv.className = 'message-content';
             messageDiv.appendChild(contentDiv);
 
+            // Add tool events section with new design
+            const toolEventsContainer = document.createElement('div');
+            toolEventsContainer.className = 'tool-events-container';
+            toolEventsContainer.style.display = 'none'; // Hide by default
+            
+            const toolEventsHeader = document.createElement('div');
+            toolEventsHeader.className = 'tool-events-header';
+            toolEventsHeader.innerHTML = `
+                <div class="tool-events-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+                    </svg>
+                    <span>Tool Events</span>
+                </div>
+                <button class="tool-events-toggle">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="18 15 12 9 6 15"></polyline>
+                    </svg>
+                </button>
+            `;
+            
+            const toolEventsContent = document.createElement('div');
+            toolEventsContent.className = 'tool-events-content';
+            
+            toolEventsHeader.querySelector('.tool-events-toggle').addEventListener('click', (e) => {
+                const container = toolEventsContainer;
+                const button = e.currentTarget;
+                const isCollapsed = container.classList.toggle('collapsed');
+                button.classList.toggle('collapsed', isCollapsed);
+            });
+            
+            toolEventsContainer.appendChild(toolEventsHeader);
+            toolEventsContainer.appendChild(toolEventsContent);
+            messageDiv.insertBefore(toolEventsContainer, contentDiv);
+            
+            // Store reference to tool events content
+            messageDiv.dataset.toolEventsContent = true;
+
             const branchButton = document.createElement('button');
             branchButton.className = 'branch-button';
             branchButton.innerHTML = branch_button_svg;
@@ -552,7 +621,9 @@ export class ChatView {
         messageDiv.dataset.originalContent = updatedContent;
         contentDiv.innerHTML = marked.parse(updatedContent);
     
-        messageDiv.querySelectorAll('pre code').forEach((block) => {
+        contentDiv.querySelectorAll('pre code').forEach((block) => {
+            // Remove the data-highlighted attribute before highlighting again
+            block.removeAttribute('data-highlighted');
             hljs.highlightElement(block);
         });
 
