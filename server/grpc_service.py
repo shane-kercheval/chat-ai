@@ -143,7 +143,9 @@ class ToolEventHandler:
             self.consolidated_output.append(f"\nThought: {event.thought}")
             if event.tool_name:
                 tool_event.tool_name = event.tool_name
-                tool_event.tool_args.update(event.tool_args)
+                # Convert all values to strings before updating the map
+                if event.tool_args:
+                    tool_event.tool_args.update({k: str(v) for k, v in event.tool_args.items()})
                 self.consolidated_output.append(
                     f"\nUsing tool: {event.tool_name} with args {event.tool_args}"
                 )
@@ -151,7 +153,9 @@ class ToolEventHandler:
             tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_START
             tool_event.iteration = event.iteration
             tool_event.tool_name = event.tool_name
-            tool_event.tool_args.update(event.tool_args)
+            # Convert all values to strings before updating the map
+            if event.tool_args:
+                tool_event.tool_args.update({k: str(v) for k, v in event.tool_args.items()})
             self.consolidated_output.append(f"\nExecuting {event.tool_name}...")
         elif isinstance(event, ToolExecutionResultEvent):
             tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_RESULT

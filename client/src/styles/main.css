@@ -2158,13 +2158,13 @@ code {
     line-height: 1.4;
 }
 
-.tool-events-content code {
+/* .tool-events-content code {
     font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
     font-size: 12px;
     padding: 2px 4px;
     background: #f1f3f5;
     border-radius: 3px;
-}
+} */
 
 /* Tool name styling */
 .tool-events-content code.tool-name {

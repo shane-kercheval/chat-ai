@@ -58,8 +58,8 @@ function setupIpcHandlers(mainWindow) {
                             iteration: toolEvent.getIteration(),
                             thought: toolEvent.getThought(),
                             tool_name: toolEvent.getToolName(),
-                            tool_args: toolEvent.getToolArgs ? 
-                                Object.fromEntries(toolEvent.getToolArgs().entries()) : 
+                            tool_args: toolEvent.getToolArgsMap() ? 
+                                Object.fromEntries(toolEvent.getToolArgsMap().entries()) : 
                                 {},
                             result: toolEvent.getResult()
                         },
