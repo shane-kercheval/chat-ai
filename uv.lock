@@ -436,7 +436,7 @@ requires-dist = [
     { name = "grpcio" },
     { name = "grpcio-tools" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.2.1" },
-    { name = "openai" },
+    { name = "openai", specifier = ">=1.63.2" },
     { name = "pathspec", specifier = ">=0.12.1" },
     { name = "pypdf", specifier = ">=5.1.0" },
     { name = "pytest" },
