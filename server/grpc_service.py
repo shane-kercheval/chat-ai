@@ -1,4 +1,5 @@
 """Main gRPC service for the agent's chat service."""
+import argparse
 from collections.abc import AsyncGenerator
 from copy import deepcopy
 from dataclasses import dataclass
@@ -16,7 +17,15 @@ from sentence_transformers import SentenceTransformer
 import yaml
 from server.mcp_server.mcp_manager import MCPClientManager
 from server.mcp_server.utilities import convert_mcp_tools_to_functions
-from server.mcp_server.functions_agent import AgentEvent, Function, FunctionAgent, ModelConfiguration, ThinkStartEvent, ThoughtEvent, ToolExecutionResultEvent, ToolExecutionStartEvent
+from server.mcp_server.functions_agent import (
+    AgentEvent,
+    Function as AgentFunction,
+    FunctionAgent,
+    ModelConfiguration,
+    ThinkStartEvent,
+    ThoughtEvent,
+    ToolExecutionResultEvent, ToolExecutionStartEvent,
+)
 from proto.generated import chat_pb2, chat_pb2_grpc
 from server.agents.context_strategy_agent import ContextType
 from server.async_merge import AsyncMerge
@@ -55,6 +64,7 @@ class CompletionServiceConfig:
     rag_similarity_threshold: float = 0.3
     rag_max_k: int = 20
     max_content_length: int = 200_000
+    mcp_server_config_path: str | None = None
 
 
 @dataclass
@@ -114,6 +124,8 @@ def proto_to_dict(proto_obj) -> dict[str, object]:  # noqa: ANN001
 
 
 class ToolEventHandler:
+    """Handle tool events and build consolidated output string."""
+
     def __init__(self, conv_id: str, model_index: int, request_id: str, response_id: str):
         self.consolidated_output = []
         self.conv_id = conv_id
@@ -147,7 +159,7 @@ class ToolEventHandler:
                 if event.tool_args:
                     tool_event.tool_args.update({k: str(v) for k, v in event.tool_args.items()})
                 self.consolidated_output.append(
-                    f"\nUsing tool: {event.tool_name} with args {event.tool_args}"
+                    f"\nUsing tool: {event.tool_name} with args {event.tool_args}",
                 )
         elif isinstance(event, ToolExecutionStartEvent):
             tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_START
@@ -258,10 +270,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
         # Create event handler that will manage both output string and client responses
         event_handler = ToolEventHandler(conv_id, model_index, request_id, response_id)
 
-        async with MCPClientManager() as manager:
-            # await manager.connect_servers(self.config.mcp_config_path)
-            await manager.connect_servers('/Users/shanekercheval/repos/chat-ai/server/mcp_server/mcp_fake_server_config.json')
-
+        async with MCPClientManager(self.config.mcp_server_config_path) as manager:
             mcp_tools = await manager.list_tools()
             if not mcp_tools:
                 raise ValueError("No tools found on any connected MCP servers")
@@ -272,7 +281,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             async def list_tools() -> list[dict]:
                 return await manager.list_tools()
 
-            list_tools_function = Function(
+            list_tools_function = AgentFunction(
                 name='list_tools',
                 description='List available tools from all connected MCP servers.',
                 parameters=[],
@@ -296,8 +305,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
 
             result = await agent_task
             if result.answer:
-                event_handler.consolidated_output.append(f"\n\nFinal tool-based answer: {result.answer}")
-            
+                event_handler.consolidated_output.append(f"\n\nFinal tool-based answer: {result.answer}")  # noqa: E501
             # Yield final response with consolidated output
             yield None, event_handler.get_output()
 
@@ -982,10 +990,25 @@ class ConfigurationService(chat_pb2_grpc.ConfigurationServiceServicer):
             context.set_details(str(e))
             raise
 
+def parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="Start the gRPC server")
+    parser.add_argument(
+        "--mcp-config",
+        default="/Users/shanekercheval/repos/chat-ai/server/mcp_server/mcp_fake_server_config.json",
+        help="Path to MCP server config file",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=50051,
+        help="Port to run the server on",
+    )
+    return parser.parse_args()
 
-async def serve() -> None:
+
+async def serve(mcp_server_config_path: str | None, port: int = 50051) -> None:
     """Start the gRPC server."""
-    port = 50051
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     db_path = os.path.join(base_dir, 'data', 'chat.db')
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
@@ -1011,6 +1034,7 @@ async def serve() -> None:
             supported_models=supported_models,
             channel = grpc.aio.insecure_channel(f'[::]:{port}'),
             initial_conversations=convert_to_conversations(initial_conversations),
+            mcp_server_config_path=mcp_server_config_path,
         ),
     )
     await completion_service.initialize()
@@ -1067,4 +1091,5 @@ async def serve() -> None:
 
 if __name__ == "__main__":
     logging.info(f"Python version: {sys.version}")
-    asyncio.run(serve())
+    args = parse_args()
+    asyncio.run(serve(mcp_server_config_path=args.mcp_config, port=args.port))

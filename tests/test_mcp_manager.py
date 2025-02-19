@@ -1,7 +1,10 @@
 """Tests for MCP tool conversion functions."""
 import pytest
 from typing import Any
-from server.mcp_server.utilities import convert_mcp_tools_to_functions, _convert_schema_to_parameter
+from server.mcp_server.utilities import (
+    convert_mcp_tools_to_functions,
+    _convert_schema_to_parameter,
+)
 from server.mcp_server.functions_agent import Function, Parameter, ParameterType
 
 class MockMCPManager:
