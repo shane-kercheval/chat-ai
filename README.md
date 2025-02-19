@@ -60,7 +60,7 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 - [ ] Clean up unused resources periodically (e.g. stored files and chunks)
 - [ ] MCP Agent usage does not count in session summary
 - [ ] I'm not sure if MCP Agent works with multiple models at the same time.
-- [ ] Need to merge `Function`/`Parameter` in models with `AgentFunction` and `AgentParameter` in `functions_agent.py`. 
+- [ ] Need to merge `Function`/`Parameter` in `models.__init__` with classes in `functions_agent.py`. 
 
 **Models**
 
