@@ -265,7 +265,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
         model_index: int,
         request_id: str,
         response_id: str,
-    ) -> str:
+    ) -> str: # type: ignore
         """Run function agent and return consolidated output."""
         # Create event handler that will manage both output string and client responses
         event_handler = ToolEventHandler(conv_id, model_index, request_id, response_id)
