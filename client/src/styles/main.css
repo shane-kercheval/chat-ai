@@ -1439,7 +1439,7 @@ code {
 .add-attachment-button,
 .clear-attachments-button,
 .context-strategy-button,
-.web-search-button {
+.mcp-tool-button {
     background: none !important;
     border: none;
     color: #666;
@@ -1457,7 +1457,7 @@ code {
 .add-attachment-button:hover,
 .clear-attachments-button:hover,
 .context-strategy-button:hover,
-.web-search-button:hover {
+.mcp-tool-button:hover {
     background: rgba(0,0,0,0.05) !important;
 }
 
@@ -1472,7 +1472,7 @@ code {
 }
 
 .context-strategy-button svg,
-.web-search-button svg {
+.mcp-tool-button svg {
     width: 18px;
     height: 18px;
     stroke: currentColor;
@@ -1484,7 +1484,7 @@ code {
 .add-attachment-button .icon-tooltip,
 .clear-attachments-button .icon-tooltip,
 .context-strategy-button .icon-tooltip,
-.web-search-button .icon-tooltip {
+.mcp-tool-button .icon-tooltip {
     position: absolute;
     left: calc(100% + 4px);
     top: 50%;
@@ -1503,7 +1503,7 @@ code {
 .add-attachment-button:hover .icon-tooltip,
 .clear-attachments-button:hover .icon-tooltip,
 .context-strategy-button:hover .icon-tooltip,
-.web-search-button:hover .icon-tooltip {
+.mcp-tool-button:hover .icon-tooltip {
     display: block;
 }
 
@@ -1524,19 +1524,19 @@ code {
 }
 
 /* Web search active state */
-.web-search-button.active {
+.mcp-tool-button.active {
     color: #1976d2;
     background: rgba(25, 118, 210, 0.05) !important;
 }
 
 /* Animation for state changes */
 .context-strategy-button svg,
-.web-search-button svg {
+.mcp-tool-button svg {
     transition: transform 0.2s;
 }
 
 .context-strategy-button:active svg,
-.web-search-button:active svg {
+.mcp-tool-button:active svg {
     transform: scale(0.9);
 }
 
@@ -2034,4 +2034,131 @@ code {
 #instructions-content::-webkit-scrollbar-thumb:hover,
 #history-content::-webkit-scrollbar-thumb:hover {
     background: #555;
+}
+
+/* Tool Events Container */
+.tool-events-container {
+    margin: 0 0 30px 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #f8f9fa;
+    display: none;
+}
+
+/* Header Styles */
+.tool-events-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #f1f3f5;
+    border-bottom: 1px solid #e0e0e0;
+    user-select: none;
+}
+
+.tool-events-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+}
+
+.tool-events-title svg {
+    color: #1976d2;
+    width: 14px;
+    height: 14px;
+}
+
+/* Toggle Button */
+.tool-events-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.tool-events-toggle:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #333;
+}
+
+.tool-events-toggle svg {
+    transition: transform 0.2s ease;
+}
+
+.tool-events-toggle.collapsed svg {
+    transform: rotate(180deg);
+}
+
+.tool-events-container.collapsed .tool-events-content {
+    display: none;
+}
+
+/* Content Area */
+.tool-events-content {
+    padding: 12px;
+    font-family: inherit;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #333;
+    background: #fff;
+}
+
+.tool-events-content > * {
+    background: #f8f9fa;
+    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 16px;
+}
+
+.tool-events-content > *:last-child {
+    margin-bottom: 0;
+}
+
+/* Thinking Iterations */
+.tool-events-content em {
+    color: #6741d9;
+    font-style: normal;
+    font-weight: 500;
+    display: block;
+}
+
+/* Section Headers */
+.tool-events-content strong {
+    color: #2b8a3e;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 8px;
+}
+
+/* Tool Info */
+.tool-name,
+.tool-label {
+    color: #1864ab;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    margin-bottom: 4px;
+}
+
+/* Code Blocks */
+.tool-events-content pre {
+    margin: 8px 0 0 0;
+    padding: 8px;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
 }

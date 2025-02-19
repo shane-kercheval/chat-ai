@@ -29,7 +29,7 @@ export class AttachmentManager extends EventEmitter {
         }
         this.setupClearHandler();
         this.setupStrategyHandler();
-        this.setupWebSearchHandler();
+        this.setupMCPToolHandler();
         AttachmentManager.registerSearchProvider(this);
     }
 
@@ -129,15 +129,19 @@ export class AttachmentManager extends EventEmitter {
         }
     }
 
-    setupWebSearchHandler() {
-        const webSearchButton = document.querySelector('.web-search-button');
-        if (webSearchButton) {
-            webSearchButton.addEventListener('click', () => {
+    setupMCPToolHandler() {
+        const toolButton = document.querySelector('.mcp-tool-button');
+        if (toolButton) {
+            toolButton.addEventListener('click', () => {
                 this.webSearchEnabled = !this.webSearchEnabled;
-                webSearchButton.classList.toggle('active', this.webSearchEnabled);
-                UIManager.showNotification('Not Implemented.', 'error');
+                toolButton.classList.toggle('active', this.webSearchEnabled);
+                AttachmentStore.getInstance().setToolsEnabled(this.webSearchEnabled);
             });
         }
+    }
+    
+    getToolsEnabled() {
+        return this.webSearchEnabled;
     }
     
     handleSearch() {
