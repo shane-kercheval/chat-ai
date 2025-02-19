@@ -18,7 +18,7 @@ const grpc = require('@grpc/grpc-js');
 let activeCall = null;
 
 function setupIpcHandlers(mainWindow) {
-    ipcMain.handle('send-message', async (event, messageText, modelConfigs, conversationId, instructions, resources, contextStrategy) => {
+    ipcMain.handle('send-message', async (event, messageText, modelConfigs, conversationId, instructions, resources, contextStrategy, enableTools) => {
         try {
             // Clean up any existing call
             if (activeCall) {
@@ -32,7 +32,8 @@ function setupIpcHandlers(mainWindow) {
                 messageText,
                 instructions,
                 resources,
-                contextStrategy
+                contextStrategy,
+                enableTools
             );
             activeCall = call;
     
@@ -47,6 +48,25 @@ function setupIpcHandlers(mainWindow) {
                         modelIndex: response.getModelIndex(),
                         requestEntryId: response.getRequestEntryId(),
                         entryId: response.getEntryId(),
+                    });
+                } else if (response.hasToolEvent()) {
+                    const toolEvent = response.getToolEvent();
+                    mainWindow.webContents.send('chat-response', {
+                        type: 'tool_event',
+                        tool_event: {
+                            type: toolEvent.getType(),
+                            iteration: toolEvent.getIteration(),
+                            thought: toolEvent.getThought(),
+                            tool_name: toolEvent.getToolName(),
+                            tool_args: toolEvent.getToolArgsMap() ? 
+                                Object.fromEntries(toolEvent.getToolArgsMap().entries()) : 
+                                {},
+                            result: toolEvent.getResult()
+                        },
+                        modelIndex: response.getModelIndex(),
+                        requestEntryId: response.getRequestEntryId(),
+                        entryId: response.getEntryId(),
+                        conversation_id: response.getConversationId()
                     });
                 } else if (response.hasSummary()) {
                     const summary = response.getSummary();

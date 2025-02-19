@@ -11,6 +11,7 @@ export class AttachmentStore extends EventEmitter {
             contexts: new Map()
         };
         this.contextStrategy = 'Auto';
+        this.toolsEnabled = false;
     }
 
     addAttachment(type, { key, value }) {
@@ -50,6 +51,15 @@ export class AttachmentStore extends EventEmitter {
 
     getContextStrategy() {
         return this.contextStrategy;
+    }
+
+    setToolsEnabled(enabled) {
+        this.toolsEnabled = enabled;
+        this.emit('toolsEnabled', enabled);
+    }
+
+    getToolsEnabled() {
+        return this.toolsEnabled;
     }
 
     static getInstance() {

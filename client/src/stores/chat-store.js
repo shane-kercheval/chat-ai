@@ -40,6 +40,18 @@ export class ChatStore extends EventEmitter {
                     requestEntryId: data.requestEntryId,
                     entryId: data.entryId
                 });
+            } else if (data.type === 'tool_event') {
+                this.emit('tool-event', {
+                    type: data.tool_event.type,
+                    iteration: data.tool_event.iteration,
+                    thought: data.tool_event.thought,
+                    toolName: data.tool_event.tool_name,
+                    toolArgs: data.tool_event.tool_args,
+                    result: data.tool_event.result,
+                    modelIndex: data.modelIndex,
+                    requestEntryId: data.requestEntryId,
+                    entryId: data.entryId
+                });
             } else if (data.type === 'summary') {
                 this.updateTotals(data.summary);
                 this.emit('summary', {
@@ -54,6 +66,8 @@ export class ChatStore extends EventEmitter {
                     modelIndex: data.modelIndex,
                     requestEntryId: data.requestEntryId
                 });
+            } else {
+                console.info('Unknown response type:', data.type);
             }
         });
 
@@ -131,6 +145,7 @@ export class ChatStore extends EventEmitter {
             // Combine all resources
             const allResources = [...attachedResources, ...contextResources];
             const contextStrategy = this.attachmentStore.getContextStrategy();
+            const toolsEnabled = this.attachmentStore.getToolsEnabled(); // Add this line
             
             await this.ipcService.sendMessage(
                 content, 
@@ -138,7 +153,8 @@ export class ChatStore extends EventEmitter {
                 this.currentConversationId,
                 allInstructions,
                 allResources,
-                contextStrategy
+                contextStrategy,
+                toolsEnabled
             );
         } catch (error) {
             this.emit('error', error);

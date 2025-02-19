@@ -1,4 +1,5 @@
 """Main gRPC service for the agent's chat service."""
+import argparse
 from collections.abc import AsyncGenerator
 from copy import deepcopy
 from dataclasses import dataclass
@@ -14,6 +15,17 @@ import asyncio
 from google.protobuf import timestamp_pb2, empty_pb2
 from sentence_transformers import SentenceTransformer
 import yaml
+from server.mcp_server.mcp_manager import MCPClientManager
+from server.mcp_server.utilities import convert_mcp_tools_to_functions
+from server.mcp_server.functions_agent import (
+    AgentEvent,
+    Function as AgentFunction,
+    FunctionAgent,
+    ModelConfiguration,
+    ThinkStartEvent,
+    ThoughtEvent,
+    ToolExecutionResultEvent, ToolExecutionStartEvent,
+)
 from proto.generated import chat_pb2, chat_pb2_grpc
 from server.agents.context_strategy_agent import ContextType
 from server.async_merge import AsyncMerge
@@ -52,6 +64,7 @@ class CompletionServiceConfig:
     rag_similarity_threshold: float = 0.3
     rag_max_k: int = 20
     max_content_length: int = 200_000
+    mcp_server_config_path: str | None = None
 
 
 @dataclass
@@ -108,6 +121,67 @@ def proto_to_dict(proto_obj) -> dict[str, object]:  # noqa: ANN001
     """Convert protobuf message to dictionary with proper casing."""
     from google.protobuf.json_format import MessageToDict
     return MessageToDict(proto_obj, preserving_proto_field_name=True)
+
+
+class ToolEventHandler:
+    """Handle tool events and build consolidated output string."""
+
+    def __init__(self, conv_id: str, model_index: int, request_id: str, response_id: str):
+        self.consolidated_output = []
+        self.conv_id = conv_id
+        self.model_index = model_index
+        self.request_id = request_id
+        self.response_id = response_id
+        self.response_queue = asyncio.Queue()
+
+    async def handle_event(self, event: AgentEvent) -> None:
+        """Handle tool events - build output string and queue response for client."""
+        # Create response for client
+        response = chat_pb2.ChatStreamResponse()
+        response.conversation_id = self.conv_id
+        response.model_index = self.model_index
+        response.entry_id = self.response_id
+        response.request_entry_id = self.request_id
+
+        tool_event = response.tool_event
+        if isinstance(event, ThinkStartEvent):
+            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.THINK_START
+            tool_event.iteration = event.iteration
+            self.consolidated_output.append(f"\nThinking iteration {event.iteration + 1}...")
+        elif isinstance(event, ThoughtEvent):
+            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.THOUGHT
+            tool_event.iteration = event.iteration
+            tool_event.thought = event.thought
+            self.consolidated_output.append(f"\nThought: {event.thought}")
+            if event.tool_name:
+                tool_event.tool_name = event.tool_name
+                # Convert all values to strings before updating the map
+                if event.tool_args:
+                    tool_event.tool_args.update({k: str(v) for k, v in event.tool_args.items()})
+                self.consolidated_output.append(
+                    f"\nUsing tool: {event.tool_name} with args {event.tool_args}",
+                )
+        elif isinstance(event, ToolExecutionStartEvent):
+            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_START
+            tool_event.iteration = event.iteration
+            tool_event.tool_name = event.tool_name
+            # Convert all values to strings before updating the map
+            if event.tool_args:
+                tool_event.tool_args.update({k: str(v) for k, v in event.tool_args.items()})
+            self.consolidated_output.append(f"\nExecuting {event.tool_name}...")
+        elif isinstance(event, ToolExecutionResultEvent):
+            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_RESULT
+            tool_event.iteration = event.iteration
+            tool_event.tool_name = event.tool_name
+            tool_event.result = str(event.result)
+            self.consolidated_output.append(f"\nResult from {event.tool_name}: {event.result}")
+
+        # Queue the response for the client
+        await self.response_queue.put(response)
+
+    def get_output(self) -> str:
+        """Get the consolidated output string."""
+        return "\n".join(self.consolidated_output)
 
 
 class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
@@ -183,6 +257,58 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             self.event_subscribers.remove(queue)
 
 
+    async def _run_function_agent(
+        self,
+        messages: list[dict],
+        model_config: chat_pb2.ModelConfig,
+        conv_id: str,
+        model_index: int,
+        request_id: str,
+        response_id: str,
+    ) -> str: # type: ignore
+        """Run function agent and return consolidated output."""
+        # Create event handler that will manage both output string and client responses
+        event_handler = ToolEventHandler(conv_id, model_index, request_id, response_id)
+
+        async with MCPClientManager(self.config.mcp_server_config_path) as manager:
+            mcp_tools = await manager.list_tools()
+            if not mcp_tools:
+                raise ValueError("No tools found on any connected MCP servers")
+
+            functions = await convert_mcp_tools_to_functions(mcp_tools, manager)
+
+            # Add list_tools function
+            async def list_tools() -> list[dict]:
+                return await manager.list_tools()
+
+            list_tools_function = AgentFunction(
+                name='list_tools',
+                description='List available tools from all connected MCP servers.',
+                parameters=[],
+                func=list_tools,
+            )
+            functions.append(list_tools_function)
+
+            agent = FunctionAgent(
+                model_config=ModelConfiguration(
+                    model="openai/" + model_config.model_name,
+                    api_key=os.getenv("OPENAI_API_KEY"),
+                ),
+                tools=functions,
+                callback=event_handler.handle_event,
+            )
+            agent_task = asyncio.create_task(agent(messages=messages))
+            # Stream responses from the queue while agent is running
+            while not agent_task.done():
+                response = await event_handler.response_queue.get()
+                yield response, None
+
+            result = await agent_task
+            if result.answer:
+                event_handler.consolidated_output.append(f"\n\nFinal tool-based answer: {result.answer}")  # noqa: E501
+            # Yield final response with consolidated output
+            yield None, event_handler.get_output()
+
     async def _process_model(
         self,
         model_config: chat_pb2.ModelConfig,
@@ -193,6 +319,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
         response_id: str,
         resource_context: str | None,
         context: grpc.aio.ServicerContext,
+        enable_tools: bool = False,
     ) -> AsyncGenerator[chat_pb2.ChatStreamResponse, None]:
         """Process a single model's chat request."""
         try:
@@ -203,6 +330,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             logging.info(f"temperature: `{params.temperature if params.HasField("temperature") else None}`")  # noqa: E501
             logging.info(f"max_tokens: `{params.max_tokens if params.HasField("max_tokens") else None}`")  # noqa: E501
             logging.info(f"top_p: `{params.top_p if params.HasField("top_p") else None}`")
+            logging.info(f"enable_tools: `{enable_tools}`")
 
             model_wrapper = Model.instantiate({
                 'model_type': model_config.model_type,
@@ -222,6 +350,27 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                     context.set_code(grpc.StatusCode.NOT_FOUND)
                     context.set_details(f"No messages found for conversation `{conv_id}`")
                 raise ValueError(f"No messages found for conversation `{conv_id}`")
+
+            if enable_tools:
+                print("Tools enabled")
+                # Create queue for tool events
+                tool_output = None
+                async for response, output in self._run_function_agent(
+                    messages=model_messages,
+                    model_config=model_config,
+                    conv_id=conv_id,
+                    model_index=model_index,
+                    request_id=request_id,
+                    response_id=response_id,
+                ):
+                    if response:
+                        yield response  # Stream the tool events to client
+                    if output:
+                        tool_output = output  # Capture the final consolidated output
+
+                tool_output = f"# Tool Processing Results:\n\nThe following is additional information from a tool used, please incorporate the information into your response.\n\n{tool_output}\n\n"  # noqa: E501
+                print(f"Tool output: {tool_output}")
+                model_messages[-1]['content'] = f"{model_messages[-1]['content']}\n\n{tool_output}"
 
             model_messages = inject_context(
                 messages=model_messages,
@@ -381,6 +530,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                     response_id=response_id,
                     resource_context=resource_context,
                     context=context,
+                    enable_tools=request.HasField('enable_tools') and request.enable_tools,
                 )
                 for i, config in enumerate(request.model_configs)
             ]
@@ -840,10 +990,25 @@ class ConfigurationService(chat_pb2_grpc.ConfigurationServiceServicer):
             context.set_details(str(e))
             raise
 
+def parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
+    parser = argparse.ArgumentParser(description="Start the gRPC server")
+    parser.add_argument(
+        "--mcp-config",
+        default="/Users/shanekercheval/repos/chat-ai/server/mcp_server/mcp_fake_server_config.json",
+        help="Path to MCP server config file",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=50051,
+        help="Port to run the server on",
+    )
+    return parser.parse_args()
 
-async def serve() -> None:
+
+async def serve(mcp_server_config_path: str | None, port: int = 50051) -> None:
     """Start the gRPC server."""
-    port = 50051
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     db_path = os.path.join(base_dir, 'data', 'chat.db')
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
@@ -869,6 +1034,7 @@ async def serve() -> None:
             supported_models=supported_models,
             channel = grpc.aio.insecure_channel(f'[::]:{port}'),
             initial_conversations=convert_to_conversations(initial_conversations),
+            mcp_server_config_path=mcp_server_config_path,
         ),
     )
     await completion_service.initialize()
@@ -925,4 +1091,5 @@ async def serve() -> None:
 
 if __name__ == "__main__":
     logging.info(f"Python version: {sys.version}")
-    asyncio.run(serve())
+    args = parse_args()
+    asyncio.run(serve(mcp_server_config_path=args.mcp_config, port=args.port))

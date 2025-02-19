@@ -83,7 +83,6 @@ class Function(BaseModel):
                 param_dict["description"] = param.description
             if param.enum:
                 param_dict["enum"] = param.enum
-
             properties[param.name] = param_dict
             if param.required:
                 required.append(param.name)
@@ -96,14 +95,21 @@ class Function(BaseModel):
             parameters_dict["required"] = required
         parameters_dict["additionalProperties"] = False
 
+        # If all properties are required we should use `strict` mode
+        # However, "All fields in properties must be marked as required" (in order to use strict)
+        # https://platform.openai.com/docs/guides/function-calling
+        # so we should set `strict` to True only if all parameters are required
+        strict = all(param.required for param in self.parameters or [])
         return {
             "type": "function",
             "function": {
                 "name": self.name,
+                "strict": strict,
                 **({"description": self.description} if self.description else {}),
                 "parameters": parameters_dict,
             },
         }
+
 
 class FunctionCallResult(BaseModel):
     """The function call details extracted from the model's response."""
@@ -111,6 +117,7 @@ class FunctionCallResult(BaseModel):
     name: str
     arguments: dict[str, object]
     call_id: str
+
 
 class FunctionCallResponse(BaseModel):
     """Response containing just the essential function call information and usage stats."""
