@@ -13,7 +13,7 @@ dependencies = [
     "ruff",
     "grpcio",
     "grpcio-tools",
-    "openai",
+    "openai>=1.63.2",
     "tiktoken",
     "aiosqlite",
     "anthropic>=0.42.0",
