@@ -83,7 +83,6 @@ class Function(BaseModel):
                 param_dict["description"] = param.description
             if param.enum:
                 param_dict["enum"] = param.enum
-
             properties[param.name] = param_dict
             if param.required:
                 required.append(param.name)
@@ -100,6 +99,7 @@ class Function(BaseModel):
             "type": "function",
             "function": {
                 "name": self.name,
+                "strict": True,
                 **({"description": self.description} if self.description else {}),
                 "parameters": parameters_dict,
             },
