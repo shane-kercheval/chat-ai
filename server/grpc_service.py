@@ -995,7 +995,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Start the gRPC server")
     parser.add_argument(
         "--mcp-config",
-        default="/Users/shanekercheval/repos/chat-ai/server/mcp_server/mcp_fake_server_config.json",
+        default=None,
         help="Path to MCP server config file",
     )
     parser.add_argument(
