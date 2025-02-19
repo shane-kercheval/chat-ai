@@ -13,7 +13,13 @@ run: proto electron-proto
 # Project
 ####
 run-server: proto
-	PYTHONPATH=$PYTHONPATH:.:./proto/generated uv run server/grpc_service.py
+	PYTHONPATH=$PYTHONPATH:.:./proto/generated uv run server/grpc_service.py $(ARGS)
+
+run-server-default-mcp: proto
+	PYTHONPATH=$PYTHONPATH:.:./proto/generated \
+		uv run server/grpc_service.py \
+		--mcp-config '/Users/shanekercheval/repos/chat-ai/server/mcp_server/mcp_fake_server_config.json' \
+		$(ARGS)
 
 run-client: electron-proto
 	cd client && npm start

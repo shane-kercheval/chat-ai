@@ -243,14 +243,14 @@ export class ChatView {
                         ].join('');
                     }
                     break;
-                case 2: // TOOL_EXECUTION_START
-                    content = [
-                        '<div>',
-                        '<strong>Executing Tool:</strong>',
-                        `<span class="tool-name">${data.toolName}</span>`,
-                        '</div>'
-                    ].join('');
-                    break;
+                // case 2: // TOOL_EXECUTION_START
+                //     content = [
+                //         '<div>',
+                //         '<strong>Executing Tool:</strong>',
+                //         `<span class="tool-name">${data.toolName}</span>`,
+                //         '</div>'
+                //     ].join('');
+                //     break;
                 case 3: // TOOL_EXECUTION_RESULT
                     let resultValue = data.result;
                     try {
