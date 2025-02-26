@@ -31,14 +31,7 @@ from server.agents.context_strategy_agent import ContextType
 from server.async_merge import AsyncMerge
 from server.model_config_manager import ModelConfigManager
 from server.supported_models import SupportedModels
-from server.models import Model, ChatChunkResponse, ChatStreamResponseSummary
-# these need to be imported for the models to be registered
-from server.models.anthropic import AsyncAnthropicCompletionWrapper  # noqa: F401
-from server.models.openai import (
-    AsyncOpenAICompletionWrapper,  # noqa: F401
-    AsyncOpenAIFunctionWrapper,  # noqa: F401
-    OPENAI_FUNCTIONS,
-)
+from sik_llms import ChatChunkResponse, ChatResponseSummary, RegisteredClients, create_client
 from server.conversation_manager import (
     ConversationManager,
     ConversationNotFoundError,
@@ -323,8 +316,11 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
     ) -> AsyncGenerator[chat_pb2.ChatStreamResponse, None]:
         """Process a single model's chat request."""
         try:
+            client_type = model_config.client_type if model_config.client_type else None
+            model_name = model_config.model_name
+
             params = model_config.model_parameters
-            logging.info(f"Request from model `{model_config.model_type}`; `{model_config.model_name}`")  # noqa: E501
+            logging.info(f"Request from model `{client_type}`; `{model_name}`")
             logging.info(f"Server URL: `{params.server_url if params.HasField("server_url") else None}`")  # noqa: E501
             logging.info(f"Model index: `{model_index}`")
             logging.info(f"temperature: `{params.temperature if params.HasField("temperature") else None}`")  # noqa: E501
@@ -332,11 +328,11 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             logging.info(f"top_p: `{params.top_p if params.HasField("top_p") else None}`")
             logging.info(f"enable_tools: `{enable_tools}`")
 
-            model_wrapper = Model.instantiate({
-                'model_type': model_config.model_type,
-                'model_name': model_config.model_name,
+            model_client = create_client(
+                client_type=client_type,
+                model_name=model_name,
                 **proto_to_dict(params),
-            })
+            )
 
             # Get conversation history
             messages = await self.conversation_manager.get_messages(conv_id)
@@ -377,7 +373,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                 resource_context=resource_context,
                 instructions=instructions,
             )
-            async for response in model_wrapper(messages=model_messages):
+            async for response in model_client.run_async(messages=model_messages):
                 if context.cancelled():
                     return
                 if isinstance(response, ChatChunkResponse):
@@ -391,7 +387,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                         entry_id=response_id,
                         request_entry_id=request_id,
                     )
-                elif isinstance(response, ChatStreamResponseSummary):
+                elif isinstance(response, ChatResponseSummary):
                     yield chat_pb2.ChatStreamResponse(
                         conversation_id=conv_id,
                         summary=chat_pb2.ChatStreamResponse.Summary(
@@ -1045,8 +1041,9 @@ async def serve(mcp_server_config_path: str | None, port: int = 50051) -> None:
             num_workers=3,
             rag_scorer=SimilarityScorer(SentenceTransformer('all-MiniLM-L6-v2'), chunk_size=500),
             context_strategy_model_config={
-                'model_type': OPENAI_FUNCTIONS,
+                'client_type': RegisteredClients.OPENAI,
                 'model_name': 'gpt-4o',
+                'temperature': 0.1,
             },
         ),
     )

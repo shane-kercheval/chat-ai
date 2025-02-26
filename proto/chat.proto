@@ -102,7 +102,7 @@ message ModelParameters {
 
 // used to communicate which model(s) the user wants to use
 message ModelConfig {
-    string model_type = 1;
+    string client_type = 1;
     string model_name = 2;
     ModelParameters model_parameters = 4;
 }

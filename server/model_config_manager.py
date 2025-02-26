@@ -23,7 +23,7 @@ class ModelConfigManager:
                 CREATE TABLE IF NOT EXISTS model_configs (
                     config_id TEXT PRIMARY KEY,
                     config_name TEXT NOT NULL,
-                    model_type TEXT NOT NULL,
+                    client_type TEXT NOT NULL,
                     model_name TEXT NOT NULL,
                     temperature REAL,
                     max_tokens INTEGER,
@@ -47,7 +47,7 @@ class ModelConfigManager:
                             """, (
                                 config['config_id'],
                                 config['config_name'],
-                                config['config']['model_type'],
+                                config['config']['client_type'],
                                 config['config']['model_name'],
                                 config['config']['model_parameters'].get('temperature'),
                                 config['config']['model_parameters'].get('max_tokens'),
@@ -68,7 +68,7 @@ class ModelConfigManager:
                     config_id=row[0],
                     config_name=row[1],
                     config=chat_pb2.ModelConfig(
-                        model_type=row[2],
+                        client_type=row[2],
                         model_name=row[3],
                         model_parameters=chat_pb2.ModelParameters(
                             temperature=row[4],
@@ -102,7 +102,7 @@ class ModelConfigManager:
                 config_id=row[0],
                 config_name=row[1],
                 config=chat_pb2.ModelConfig(
-                    model_type=row[2],
+                    client_type=row[2],
                     model_name=row[3],
                     model_parameters=chat_pb2.ModelParameters(
                         temperature=row[4],
@@ -137,7 +137,7 @@ class ModelConfigManager:
             """, (
                 config_id,
                 config.config_name,
-                config.config.model_type,
+                config.config.client_type,
                 config.config.model_name,
                 config.config.model_parameters.temperature if config.config.model_parameters.HasField('temperature') else None,  # noqa: E501
                 config.config.model_parameters.max_tokens if config.config.model_parameters.HasField('max_tokens') else None,  # noqa: E501
@@ -156,7 +156,7 @@ class ModelConfigManager:
                     config_id=row[0],
                     config_name=row[1],
                     config=chat_pb2.ModelConfig(
-                        model_type=row[2],
+                        client_type=row[2],
                         model_name=row[3],
                         model_parameters=chat_pb2.ModelParameters(
                             temperature=row[4],

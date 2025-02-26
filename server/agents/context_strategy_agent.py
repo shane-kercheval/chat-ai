@@ -8,10 +8,10 @@ from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from textwrap import dedent
-from server.models import (
+from sik_llms import (
     Function,
     Parameter,
-    Model,
+    create_client,
 )
 
 
@@ -110,19 +110,29 @@ class ResourceContextFunction:
 class ContextStrategyAgent:
     """Agent that determines context strategy for resources based on a question."""
 
-    def __init__(self, model_config: dict, **model_kwargs: dict[str, object]):
+    def __init__(
+            self,
+            client_type: str | Enum | None,
+            model_name: str,
+            **model_kwargs: dict[str, object],
+        ):
         """
         Initialize the agent.
 
         Args:
-            model_config:
-                Configuration for the model. See Model.instantiate for format.
+            client_type:
+                Type of model to use. See `sik_llms.create_client` for details.
+            model_name:
+                Name of the model to use. See `sik_llms.create_client` for details.
             **model_kwargs:
-                Additional keyword arguments for the model.
+                Additional keyword arguments for the model (e.g. `temperature`, etc.).
         """
-        model_config['functions'] = [ResourceContextFunction.create()]
-        model_config = {**model_config, **model_kwargs}
-        self.wrapper = Model.instantiate(model_config)
+        self.model_client = create_client(
+            client_type=client_type,
+            model_name=model_name,
+            functions=[ResourceContextFunction.create()],
+            **model_kwargs,
+        )
 
     async def __call__(
         self,
@@ -145,7 +155,7 @@ class ContextStrategyAgent:
         # remove system messages from user inut since that will confuse the agent
         messages = [m for m in messages if m['role'] != 'system']
         responses = await asyncio.gather(*(
-            self.wrapper(
+            self.model_client.run_async(
                 messages=[
                     *messages,  # Keep all messages
                     {'role': 'user', 'content': f"Resource name being considered: `{resource_name}`"},  # noqa: E501

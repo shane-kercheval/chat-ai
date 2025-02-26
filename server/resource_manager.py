@@ -15,10 +15,6 @@ from cachetools import LRUCache
 from dataclasses import dataclass
 from proto.generated import chat_pb2
 from server.agents.context_strategy_agent import ContextStrategyAgent, ContextType
-from server.models.openai import (
-    # need to import AsyncOpenAIFunctionWrapper so it is registered
-    AsyncOpenAIFunctionWrapper,  # noqa
-)
 from server.utilities import (
     clean_text_from_pdf,
     extract_text_from_pdf,
@@ -198,7 +194,9 @@ class ResourceManager:
                 Minimum character count for RAG. (Documents below this threshold will automatically
                 include the entire content in the context.)
             context_strategy_model_config:
-                Model config to use for the strategy agent. See `Model.instantiate` for format.
+                Model config to use for the strategy agent. Must contain `client_type` and
+                `model_name` keys. Can contain additional keys that will be passed to the model
+                (e.g. `temperature`).
         """
         self.db_path = db_path
         self._manager = Manager()
@@ -435,7 +433,13 @@ class ResourceManager:
             ]
         elif context_strategy == ContextStrategy.AUTO:
             # Get context strategy from agent for each file
-            agent = ContextStrategyAgent(model_config=self._context_strategy_model_config)
+            client_type = self._context_strategy_model_config.pop('client_type')
+            model_name = self._context_strategy_model_config.pop('model_name')
+            agent = ContextStrategyAgent(
+                client_type=client_type,
+                model_name=model_name,
+                **self._context_strategy_model_config,
+            )
             summary = await agent(
                 messages=[{"role": "user", "content": query}],
                 resource_names=[r.path for r in resources],

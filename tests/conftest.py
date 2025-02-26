@@ -5,13 +5,13 @@ import tempfile
 import time
 import pytest
 
-from server.models import (
+from sik_llms import (
     Function,
     FunctionCallResponse,
     FunctionCallResult,
-    Model,
+    Client,
     ChatChunkResponse,
-    ChatStreamResponseSummary,
+    ChatResponseSummary,
 )
 
 
@@ -34,8 +34,8 @@ def create_temp_file(content: str, prefix: str | None = None, suffix: str | None
 
 
 
-@Model.register('MockAsyncOpenAICompletionWrapper')
-class MockAsyncOpenAICompletionWrapper(Model):
+@Client.register('MockAsyncOpenAICompletionWrapper')
+class MockAsyncOpenAICompletionWrapper(Client):
    """Mock wrapper that simulates OpenAI API streaming responses."""
 
    def __init__(
@@ -49,12 +49,12 @@ class MockAsyncOpenAICompletionWrapper(Model):
        self.mock_responses = model_kwargs.pop('mock_responses', 'This is a mock response.')
        self.model_parameters = model_kwargs
 
-   async def __call__(
+   async def run_async(
         self,
         messages: list[dict[str, str]],
         model_name: str | None = None,  # noqa: ARG002
         **model_kwargs: object,  # noqa: ARG002
-    ) -> AsyncGenerator[ChatChunkResponse | ChatStreamResponseSummary, None]:
+    ) -> AsyncGenerator[ChatChunkResponse | ChatResponseSummary, None]:
         """Simulate streaming response with mock chunks and summary."""
         start_time = time.time()
         chunks: list[ChatChunkResponse] = []
@@ -75,9 +75,10 @@ class MockAsyncOpenAICompletionWrapper(Model):
         end_time = time.time()
 
         input_tokens = (sum(len(str(m)) for m in messages) // 4) + 1
-        output_tokens = (sum(len(chunk.content) for chunk in chunks) // 4) + 1
+        output_tokens = (len(next_response) // 4) + 1
 
-        yield ChatStreamResponseSummary(
+        yield ChatResponseSummary(
+            content=next_response,
             total_input_tokens=input_tokens,
             total_output_tokens=output_tokens,
             total_input_cost=input_tokens * (0.03 / 1000),
@@ -86,8 +87,8 @@ class MockAsyncOpenAICompletionWrapper(Model):
         )
 
 
-@Model.register('MockAsyncOpenAIFunctionWrapper')
-class MockAsyncOpenAIFunctionWrapper(Model):
+@Client.register('MockAsyncOpenAIFunctionWrapper')
+class MockAsyncOpenAIFunctionWrapper(Client):
     """Mock wrapper that simulates OpenAI API function calling."""
 
     def __init__(
@@ -105,7 +106,7 @@ class MockAsyncOpenAIFunctionWrapper(Model):
         self.mock_responses = model_kwargs.pop('mock_responses')
         self.model_kwargs = model_kwargs or {}
 
-    async def __call__(
+    async def run_async(
         self,
         messages: list[dict[str, str]],
         functions: list[Function] | None = None,  # noqa: ARG002

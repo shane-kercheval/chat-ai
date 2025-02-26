@@ -1,11 +1,7 @@
 """Tests for context strategy agent."""
 import asyncio
 import pytest
-from server.models.openai import (
-    # needs to be imported so that it is registered
-    AsyncOpenAIFunctionWrapper,  # noqa
-    OPENAI_FUNCTIONS,
-)
+from sik_llms import RegisteredClients
 from server.agents.context_strategy_agent import (
     ContextStrategyAgent,
     ContextStrategyResult,
@@ -26,7 +22,7 @@ class TestContextStrategyBasics:
         """Test getting strategy for a single file."""
         files = ['report.pdf']
         model_config = {
-            'model_type': 'MockAsyncOpenAIFunctionWrapper',
+            'client_type': 'MockAsyncOpenAIFunctionWrapper',
             'model_name': 'MockModel',
             'mock_responses': {
                 'name': 'not_used',
@@ -40,7 +36,7 @@ class TestContextStrategyBasics:
         messages = [
             {"role": "user", "content": "Can you summarize this document?"},
         ]
-        agent = ContextStrategyAgent(model_config=model_config)
+        agent = ContextStrategyAgent(**model_config)
         summary = await agent(messages=messages, resource_names=files)
         assert isinstance(summary, ContextStrategySummary)
         assert len(summary.strategies) == 1
@@ -62,7 +58,7 @@ class TestContextStrategyBasics:
         ]
         files = ["q1_report.pdf", "q2_report.pdf", "q3_report.pdf"]
         model_config = {
-            'model_type': 'MockAsyncOpenAIFunctionWrapper',
+            'client_type': 'MockAsyncOpenAIFunctionWrapper',
             'model_name': 'MockModel',
             'mock_responses': [
                 {
@@ -76,7 +72,7 @@ class TestContextStrategyBasics:
                 for f in files
             ],
         }
-        agent = ContextStrategyAgent(model_config=model_config)
+        agent = ContextStrategyAgent(**model_config)
         summary = await agent(messages=messages, resource_names=files)
         assert len(summary.strategies) == 3
         assert summary.total_cost == pytest.approx(summary.total_input_cost + summary.total_output_cost)  # noqa: E501
@@ -98,10 +94,10 @@ class TestEvalRetrievalStrategies:
     def agent(self):
         """Create a basic agent."""
         model_config = {
-            'model_type': OPENAI_FUNCTIONS,
+            'client_type': RegisteredClients.OPENAI_FUNCTIONS,
             'model_name': TEST_MODEL,
         }
-        return ContextStrategyAgent(model_config=model_config)
+        return ContextStrategyAgent(**model_config)
 
     @pytest.mark.parametrize('test_case', [
         pytest.param(
@@ -183,10 +179,10 @@ class TestEvalRetrievalStrategies:
         files = test_case["files"]
         expected_strategies = test_case["expected_strategies"]
         model_config = {
-            'model_type': OPENAI_FUNCTIONS,
+            'client_type': RegisteredClients.OPENAI_FUNCTIONS,
             'model_name': TEST_MODEL,
         }
-        agent = ContextStrategyAgent(model_config=model_config)
+        agent = ContextStrategyAgent(**model_config)
         summaries = await asyncio.gather(*(
             agent(messages=messages, resource_names=files)
             for _ in range(sample_size)

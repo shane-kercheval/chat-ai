@@ -9,9 +9,9 @@ import os
 import pytest
 import grpc
 from sentence_transformers import SentenceTransformer
+from sik_llms import RegisteredClients
 import yaml
 from typing import Optional
-from server.models.openai import OPENAI_FUNCTIONS
 from server.resource_manager import ContextStrategy
 from tests.conftest import create_temp_file
 from proto.generated import chat_pb2, chat_pb2_grpc
@@ -38,8 +38,9 @@ DEFAULT_MODEL_CONFIGS_PATH = str(PROJECT_ROOT / 'artifacts/default_model_configs
 
 OPENAI_MODEL_NAME = 'gpt-4o-mini'
 CONTEXT_STRATEGY_MODEL_CONFIG = {
-    'model_type': OPENAI_FUNCTIONS,
+    'client_type': RegisteredClients.OPENAI_FUNCTIONS,
     'model_name': 'gpt-4o',
+    'temperature': 0.1,
 }
 ANTHROPIC_MODEL_NAME = 'claude-3-5-haiku-latest'
 
@@ -57,7 +58,7 @@ def get_default_model_config(api_key_name: str) -> chat_pb2:
     """Get the default model config for a API KEY name."""
     if api_key_name == 'OPENAI_API_KEY':
         return chat_pb2.ModelConfig(
-            model_type='OpenAI',
+            client_type='OpenAI',
             model_name=OPENAI_MODEL_NAME,
             model_parameters=chat_pb2.ModelParameters(
                 temperature=0.1,
@@ -66,7 +67,7 @@ def get_default_model_config(api_key_name: str) -> chat_pb2:
         )
     if api_key_name == 'ANTHROPIC_API_KEY':
         return chat_pb2.ModelConfig(
-            model_type='Anthropic',
+            client_type='Anthropic',
             model_name=ANTHROPIC_MODEL_NAME,
             model_parameters=chat_pb2.ModelParameters(
                 temperature=0.1,
@@ -78,7 +79,7 @@ def get_default_model_config(api_key_name: str) -> chat_pb2:
 def get_mock_model_config(mock_responses: list[str]) -> chat_pb2:
     """Get a mock model config."""
     return chat_pb2.ModelConfig(
-        model_type='MockAsyncOpenAICompletionWrapper',
+        client_type='MockAsyncOpenAICompletionWrapper',
         model_name='mock-model',
         model_parameters=chat_pb2.ModelParameters(
             mock_responses=mock_responses,
@@ -369,7 +370,7 @@ class TestCompletionService:
         request = chat_pb2.ChatRequest(
             model_configs=[
                 chat_pb2.ModelConfig(
-                    model_type='OpenAI',
+                    client_type='OpenAI',
                     model_name='invalid-model',
                     model_parameters=chat_pb2.ModelParameters(temperature=0.1),
                 ),
@@ -455,7 +456,7 @@ class TestCompletionService:
         request = chat_pb2.ChatRequest(
             model_configs=[
                 chat_pb2.ModelConfig(
-                    model_type=get_default_model_config(api_env_key).model_type,
+                    client_type=get_default_model_config(api_env_key).client_type,
                     model_name=get_default_model_config(api_env_key).model_name,
                     model_parameters=chat_pb2.ModelParameters(
                         temperature=0.1,
@@ -623,7 +624,7 @@ class TestCompletionService:
         assert history_conv_1.entries[1].HasField("single_model_response")
         assert history_conv_1.entries[1].single_model_response.message.role == chat_pb2.Role.ASSISTANT  # noqa: E501
         assert "4" in history_conv_1.entries[1].single_model_response.message.content
-        assert history_conv_1.entries[1].single_model_response.config_snapshot.model_type == "OpenAI"  # noqa: E501
+        assert history_conv_1.entries[1].single_model_response.config_snapshot.client_type == "OpenAI"  # noqa: E501
         assert history_conv_1.entries[1].single_model_response.config_snapshot.model_name == OPENAI_MODEL_NAME  # noqa: E501
         assert history_conv_1.entries[1].single_model_response.config_snapshot.model_parameters.HasField("temperature")  # noqa: E501
         assert history_conv_1.entries[1].single_model_response.config_snapshot.model_parameters.temperature == pytest.approx(0.1)  # noqa: E501
@@ -2114,7 +2115,7 @@ class TestConfigurationService:
         new_config = chat_pb2.UserModelConfig(
             config_name="Test Config",
             config=chat_pb2.ModelConfig(
-                model_type="OpenAI",
+                client_type="OpenAI",
                 model_name=OPENAI_MODEL_NAME,
                 model_parameters=chat_pb2.ModelParameters(
                     temperature=0.7,
@@ -2128,7 +2129,7 @@ class TestConfigurationService:
         # Verify saved config
         assert saved_config.config_id  # Should have generated ID
         assert saved_config.config_name == new_config.config_name
-        assert saved_config.config.model_type == new_config.config.model_type
+        assert saved_config.config.client_type == new_config.config.client_type
         assert saved_config.config.model_name == new_config.config.model_name
         assert saved_config.config.model_parameters.temperature == new_config.config.model_parameters.temperature  # noqa: E501
         assert saved_config.config.model_parameters.max_tokens == new_config.config.model_parameters.max_tokens  # noqa: E501
@@ -2143,7 +2144,7 @@ class TestConfigurationService:
         updated_config = await stub.save_model_config(update_request)
         assert updated_config.config_id == saved_config.config_id
         assert updated_config.config_name == saved_config.config_name
-        assert updated_config.config.model_type == saved_config.config.model_type
+        assert updated_config.config.client_type == saved_config.config.client_type
         assert updated_config.config.model_name == saved_config.config.model_name
         assert updated_config.config.model_parameters.temperature == pytest.approx(0.8)
         assert updated_config.config.model_parameters.max_tokens == saved_config.config.model_parameters.max_tokens  # noqa: E501

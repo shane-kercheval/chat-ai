@@ -1475,7 +1475,7 @@ class TestResourceManagerContextAuto:
                 # set low threshold to ensure we don't create a false negative by bypassing RAG
                 rag_char_threshold=10,
                 context_strategy_model_config={
-                    'model_type': 'MockAsyncOpenAIFunctionWrapper',
+                    'client_type': 'MockAsyncOpenAIFunctionWrapper',
                     'model_name': 'MockModel',
                     'mock_responses': {
                         'name': 'not_used',
@@ -1528,7 +1528,7 @@ class TestResourceManagerContextAuto:
                 # set low threshold to ensure we don't create a false negative by bypassing RAG
                 rag_char_threshold=10,
                 context_strategy_model_config={
-                    'model_type': 'MockAsyncOpenAIFunctionWrapper',
+                    'client_type': 'MockAsyncOpenAIFunctionWrapper',
                     'model_name': 'MockModel',
                     'mock_responses': [
                         {
