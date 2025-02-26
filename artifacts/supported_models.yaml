@@ -27,6 +27,13 @@ supported_models:
     output_token_limit: 4096
     cost_per_input_token: 0.000003
     cost_per_output_token: 0.000015
+  - type: 'Anthropic'
+    name: 'claude-3-7-sonnet-latest'
+    display_name: 'Claude 3.7 Sonnet'
+    context_window: 200000
+    output_token_limit: 4096
+    cost_per_input_token: 0.000003
+    cost_per_output_token: 0.000015
   - type: 'OpenAI'
     name: 'openai-compatible-server'
     display_name: 'OpenAI Compatible Server'
