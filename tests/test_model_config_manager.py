@@ -21,7 +21,7 @@ def fake_model_configs():
             'config_id': '7398FE35-5635-4297-A6F6-4AEF5AA88506',
             'config_name': 'GPT-4o-Mini - Default',
             'config': {
-                'model_type': 'OpenAI',
+                'client_type': 'OpenAI',
                 'model_name': 'gpt-4o-mini',
                 'model_parameters': {
                     'temperature': 0.2,
@@ -32,7 +32,7 @@ def fake_model_configs():
             'config_id': '0FD8F56C-B9C5-4477-9980-AA5885BBFA08',
             'config_name': 'http://localhost:1234/v1',
             'config': {
-                'model_type': 'OpenAI',
+                'client_type': 'OpenAI',
                 'model_name': 'openai-compatible-server',
                 'model_parameters': {
                     'temperature': 0.3,
@@ -117,7 +117,7 @@ class TestModelManager:
 
             configs[0].config_id = '7398FE35-5635-4297-A6F6-4AEF5AA88506'
             configs[0].config_name = 'GPT-4o-Mini - Default'
-            configs[0].config.model_type = 'OpenAI'
+            configs[0].config.client_type = 'OpenAI'
             configs[0].config.model_name = 'gpt-4o-mini'
             configs[0].config.model_parameters.HasField('temperature')
             configs[0].config.model_parameters.temperature = 0.2
@@ -136,7 +136,7 @@ class TestModelManager:
             new_config = chat_pb2.UserModelConfig(
                 config_name='Test Config',
                 config=chat_pb2.ModelConfig(
-                    model_type='Test Model Type',
+                    client_type='Test Model Type',
                     model_name='Test Model Name',
                     model_parameters=chat_pb2.ModelParameters(
                         temperature=0.7,
@@ -155,7 +155,7 @@ class TestModelManager:
             assert saved_config.HasField('config_id')  # Should have generated ID
             assert saved_config.config_id is not None
             assert saved_config.config_name == 'Test Config'
-            assert saved_config.config.model_type == 'Test Model Type'
+            assert saved_config.config.client_type == 'Test Model Type'
             assert saved_config.config.model_name == 'Test Model Name'
             assert saved_config.config.model_parameters.HasField('temperature')
             assert saved_config.config.model_parameters.temperature == pytest.approx(0.7, rel=1e-6)
@@ -184,7 +184,7 @@ class TestModelManager:
             new_config = chat_pb2.UserModelConfig(
                 config_name='Original Name',
                 config=chat_pb2.ModelConfig(
-                    model_type='Test Model Type',
+                    client_type='Test Model Type',
                     model_name='Test Model Name',
                     model_parameters=chat_pb2.ModelParameters(
                         temperature=0.7,
@@ -196,7 +196,7 @@ class TestModelManager:
             assert saved_config.HasField('config_id')  # Should have generated ID
             assert saved_config.config_id is not None
             assert saved_config.config_name == 'Original Name'
-            assert saved_config.config.model_type == 'Test Model Type'
+            assert saved_config.config.client_type == 'Test Model Type'
             assert saved_config.config.model_name == 'Test Model Name'
             assert saved_config.config.model_parameters.HasField('temperature')
             assert saved_config.config.model_parameters.temperature == pytest.approx(0.7, rel=1e-6)
@@ -215,7 +215,7 @@ class TestModelManager:
                 config_id=saved_config.config_id,  # get the ID from the saved config
                 config_name='Updated Name',
                 config=chat_pb2.ModelConfig(
-                    model_type='Updated Model Type',
+                    client_type='Updated Model Type',
                     model_name='Updated Model Name',
                     model_parameters=chat_pb2.ModelParameters(
                         temperature=0.8,
@@ -228,7 +228,7 @@ class TestModelManager:
             updated_config = await manager.save_model_config(update_config)
             assert updated_config.config_id == saved_config.config_id
             assert updated_config.config_name == 'Updated Name'
-            assert updated_config.config.model_type == 'Updated Model Type'
+            assert updated_config.config.client_type == 'Updated Model Type'
             assert updated_config.config.model_name == 'Updated Model Name'
             assert updated_config.config.model_parameters.HasField('temperature')
             assert updated_config.config.model_parameters.temperature == pytest.approx(0.8, rel=1e-6)  # noqa: E501
@@ -279,7 +279,7 @@ class TestModelManager:
             config = chat_pb2.UserModelConfig(
                 config_name='Test Config',
                 config=chat_pb2.ModelConfig(
-                    model_type='Test Model Type',
+                    client_type='Test Model Type',
                     model_name='Test Model Name',
                     model_parameters=chat_pb2.ModelParameters(
                         temperature=0.7,
@@ -353,7 +353,7 @@ class TestModelManager:
             assert config is not None
             assert config.config_id == config_id
             assert config.config_name == configs[0].config_name
-            assert config.config.model_type == configs[0].config.model_type
+            assert config.config.client_type == configs[0].config.client_type
             assert config.config.model_name == configs[0].config.model_name
 
         finally:

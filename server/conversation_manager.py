@@ -110,6 +110,7 @@ class ConversationManager:
 
         This function should be called with the lock held.
         """
+        logging.info(f"Saving conversation {conversation.id}")
         messages_json = json.dumps([
             MessageToDict(msg, preserving_proto_field_name=True)
             for msg in conversation.messages

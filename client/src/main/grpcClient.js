@@ -52,7 +52,7 @@ function sendChatRequest(
     // Convert each model config to protobuf ModelConfig
     const protoModelConfigs = modelConfigs.map(config => {
         const modelConfig = new ModelConfig();
-        modelConfig.setModelType(config.modelType);
+        modelConfig.setClientType(config.clientType);
         modelConfig.setModelName(config.modelName);
 
         const modelParameters = new ModelParameters();
@@ -61,7 +61,6 @@ function sendChatRequest(
             modelParameters.setServerUrl(config.serverUrl);
         }
         modelConfig.setModelParameters(modelParameters);
-        
         return modelConfig;
     });
     request.setModelConfigsList(protoModelConfigs);
@@ -187,7 +186,7 @@ function saveModelConfig(config) {
         userModelConfig.setConfigName(config.name);
         
         const modelConfig = new ModelConfig();
-        modelConfig.setModelType(config.modelType);
+        modelConfig.setClientType(config.clientType);
         modelConfig.setModelName(config.modelName);
         
         const modelParams = new ModelParameters();

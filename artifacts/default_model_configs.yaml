@@ -1,36 +1,59 @@
 default_model_configs:
   - config_id: '7398FE35-5635-4297-A6F6-4AEF5AA88506'
-    config_name: 'Quick/Cheap'
+    config_name: '4o-mini'
     config:
-      model_type: 'OpenAI'
+      client_type: 'OpenAI'
       model_name: 'gpt-4o-mini'
       model_parameters:
         temperature: 0.2
-  - config_id: '1BD01FCB-F772-406C-8A0F-2E7629245EF1'
-    config_name: 'Coding'
-    config:
-      model_type: 'Anthropic'
-      model_name: 'claude-3-5-sonnet-latest'
-      model_parameters:
-        temperature: 0.1
-  - config_id: '0FD8F56C-B9C5-4477-9980-AA5885BBFA08'
-    config_name: 'Creative'
-    config:
-      model_type: 'Anthropic'
-      model_name: 'claude-3-5-haiku-latest'
-      model_parameters:
-        temperature: 0.8
   - config_id: '22A58789-1B10-46FA-B552-8DDE14407582'
-    config_name: 'General'
+    config_name: '4o'
     config:
-      model_type: 'OpenAI'
+      client_type: 'OpenAI'
       model_name: 'gpt-4o'
       model_parameters:
         temperature: 0.2
-  - config_id: '7187070E-49DD-472F-AD06-F9311EB80C67'
-    config_name: 'Local Server'
+  - config_id: 'FC394774-1163-410B-914B-AAA0E28D8983'
+    config_name: 'o3-mini'
     config:
-      model_type: 'OpenAI'
+      client_type: 'OpenAI'
+      model_name: 'o3-mini'
+      model_parameters:
+        temperature: 0.2
+  # - config_id: 'DA0AAF60-6517-4408-967A-0DB08196A6CB'
+  #   config_name: 'o3-mini - Reasonsing'
+  #   config:
+  #     client_type: 'OpenAI'
+  #     model_name: 'o3-mini'
+  #     model_parameters:
+  #       temperature: 0.2
+  #       reasoning_effort: medium
+  - config_id: '0FD8F56C-B9C5-4477-9980-AA5885BBFA08'
+    config_name: 'Haiku 3.5'
+    config:
+      client_type: 'Anthropic'
+      model_name: 'claude-3-5-haiku-latest'
+      model_parameters:
+        temperature: 0.2
+  - config_id: '3B72D67F-2852-4ED9-BDAA-B6DC271A3B6B'
+    config_name: 'Sonnet 3.7'
+    config:
+      client_type: 'Anthropic'
+      model_name: 'claude-3-7-sonnet-latest'
+      model_parameters:
+        temperature: 0.2
+  # - config_id: '581A42D4-8762-4CBD-AD6A-B403F6D344C3'
+  #   config_name: 'Sonnet 3.7 - Reasoning'
+  #   config:
+  #     client_type: 'Anthropic'
+  #     model_name: 'claude-3-7-sonnet-latest'
+  #     model_parameters:
+  #       temperature: 0.2
+  #       reasoning_effort: medium
+  - config_id: '7187070E-49DD-472F-AD06-F9311EB80C67'
+    config_name: 'localhost:1234'
+    config:
+      client_type: 'OpenAI'
       model_name: 'openai-compatible-server'
       model_parameters:
         server_url: http://localhost:1234/v1

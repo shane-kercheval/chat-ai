@@ -12,7 +12,7 @@ conversations:
             role: "ASSISTANT"
             content: "The capital of France is Paris."
           config_snapshot:
-            model_type: "OpenAI"
+            client_type: "OpenAI"
             model_name: "gpt-4o-mini"
             model_parameters:
               temperature: 0.2
@@ -29,7 +29,7 @@ conversations:
             role: "ASSISTANT"
             content: "Paris has a population of about 2.2 million people in the city proper."
           config_snapshot:
-            model_type: "OpenAI"
+            client_type: "OpenAI"
             model_name: "gpt-4o-mini"
             model_parameters:
               temperature: 0.2
@@ -49,7 +49,7 @@ conversations:
             role: "ASSISTANT"
             content: "Python and JavaScript are both popular programming languages, but they serve different primary purposes. Python is known for its simplicity and readability, often used in backend development, data science, and AI. JavaScript was originally designed for web browsers but has evolved to be used in many environments."
           config_snapshot:
-            model_type: "OpenAI"
+            client_type: "OpenAI"
             model_name: "gpt-4o-mini"
             model_parameters:
               temperature: 0.5
@@ -68,7 +68,7 @@ conversations:
                 role: "ASSISTANT"
                 content: "For beginners, Python is often considered the better choice due to its clean syntax and gentle learning curve."
               config_snapshot:
-                model_type: "OpenAI"
+                client_type: "OpenAI"
                 model_name: "gpt-4o-mini"
                 model_parameters:
                   temperature: 0.8
@@ -77,7 +77,7 @@ conversations:
                 role: "ASSISTANT"
                 content: "I recommend starting with Python because of its readability and extensive learning resources, though JavaScript is also a viable option if you're interested in web development."
               config_snapshot:
-                model_type: "Anthropic"
+                client_type: "Anthropic"
                 model_name: "claude-3-haiku-latest"
                 model_parameters:
                   temperature: 0.2

@@ -11,7 +11,11 @@ import aiofiles
 import numpy as np
 
 from proto.generated import chat_pb2
-from server.agents.context_strategy_agent import ContextType
+from server.agents.context_strategy_agent import (
+    ContextStrategy as MockContextStrategy,
+    ContextStrategies as MockContextStrategies,
+    ContextType,
+)
 from server.resource_manager import ResourceManager, ResourceNotFoundError, ContextStrategy
 from server.vector_db import SimilarityScorer
 from tests.conftest import SKIP_CI, create_temp_file
@@ -1475,15 +1479,18 @@ class TestResourceManagerContextAuto:
                 # set low threshold to ensure we don't create a false negative by bypassing RAG
                 rag_char_threshold=10,
                 context_strategy_model_config={
-                    'model_type': 'MockAsyncOpenAIFunctionWrapper',
+                    'client_type': 'MockAsyncOpenAIStructuredOutput',
                     'model_name': 'MockModel',
                     'mock_responses': {
-                        'name': 'not_used',
-                        'arguments': {
-                            'resource_name': code_path,
-                            'retrieval_strategy': ContextType.FULL_TEXT.value,
-                            'reasoning': 'Mock reasoning',
-                        },
+                        'parsed': MockContextStrategies(
+                            strategies=[
+                                MockContextStrategy(
+                                    resource_name=code_path,
+                                    context_type=ContextType.RAG,
+                                    reasoning='Mock reasoning',
+                                ),
+                            ],
+                        ),
                     },
                 },
             )
@@ -1528,27 +1535,22 @@ class TestResourceManagerContextAuto:
                 # set low threshold to ensure we don't create a false negative by bypassing RAG
                 rag_char_threshold=10,
                 context_strategy_model_config={
-                    'model_type': 'MockAsyncOpenAIFunctionWrapper',
+                    'client_type': 'MockAsyncOpenAIStructuredOutput',
                     'model_name': 'MockModel',
-                    'mock_responses': [
-                        {
-                            'name': 'not_used',
-                            'arguments': {
-                                'resource_name': readme_path,
-                                'retrieval_strategy': ContextType.RAG.value,
-                                'reasoning': 'Mock reasoning',
-                            },
-                        },
-                        {
-                            'name': 'not_used',
-                            'arguments': {
-                                'resource_name': code_path,
-                                'retrieval_strategy': ContextType.IGNORE.value,
-                                'reasoning': 'Mock reasoning',
-                            },
-                        },
-
-                    ],
+                    'mock_responses': {
+                        'parsed': MockContextStrategies(strategies=[
+                            MockContextStrategy(
+                                resource_name=readme_path,
+                                context_type=ContextType.RAG,
+                                reasoning='Mock reasoning',
+                            ),
+                            MockContextStrategy(
+                                resource_name=code_path,
+                                context_type=ContextType.IGNORE,
+                                reasoning='Mock reasoning',
+                            ),
+                        ]),
+                    },
                 },
             )
             await manager.initialize()

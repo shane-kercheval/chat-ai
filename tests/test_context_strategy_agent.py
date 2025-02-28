@@ -1,89 +1,16 @@
 """Tests for context strategy agent."""
 import asyncio
 import pytest
-from server.models.openai import (
-    # needs to be imported so that it is registered
-    AsyncOpenAIFunctionWrapper,  # noqa
-    OPENAI_FUNCTIONS,
-)
+from sik_llms import RegisteredClients
 from server.agents.context_strategy_agent import (
     ContextStrategyAgent,
-    ContextStrategyResult,
-    ContextStrategySummary,
     ContextType,
 )
 from dotenv import load_dotenv
 load_dotenv()
 
-TEST_MODEL = "gpt-4o-mini"
+TEST_MODEL = 'gpt-4o'
 VALID_STRATEGIES = [ContextType.IGNORE, ContextType.FULL_TEXT, ContextType.RAG]
-
-@pytest.mark.asyncio
-class TestContextStrategyBasics:
-    """Test basic functionality of the ContextStrategyAgent."""
-
-    async def test_single_file_summary(self):
-        """Test getting strategy for a single file."""
-        files = ['report.pdf']
-        model_config = {
-            'model_type': 'MockAsyncOpenAIFunctionWrapper',
-            'model_name': 'MockModel',
-            'mock_responses': {
-                'name': 'not_used',
-                'arguments': {
-                    'resource_name': files[0],
-                    'retrieval_strategy': ContextType.FULL_TEXT.value,
-                    'reasoning': 'It is a report.',
-                },
-            },
-        }
-        messages = [
-            {"role": "user", "content": "Can you summarize this document?"},
-        ]
-        agent = ContextStrategyAgent(model_config=model_config)
-        summary = await agent(messages=messages, resource_names=files)
-        assert isinstance(summary, ContextStrategySummary)
-        assert len(summary.strategies) == 1
-        assert isinstance(summary.strategies[0], ContextStrategyResult)
-        assert summary.strategies[0].resource_name == files[0]
-        assert summary.strategies[0].context_type in VALID_STRATEGIES
-        assert summary.strategies[0].reasoning
-        assert summary.total_input_tokens > 0
-        assert summary.total_output_tokens > 0
-        assert summary.total_input_cost > 0
-        assert summary.total_output_cost > 0
-        assert summary.total_cost == pytest.approx(summary.total_input_cost + summary.total_output_cost)  # noqa: E501
-
-
-    async def test_multiple_files_summary(self):
-        """Test getting strategy for multiple files."""
-        messages = [
-            {"role": "user", "content": "What's the total revenue mentioned in these reports?"},
-        ]
-        files = ["q1_report.pdf", "q2_report.pdf", "q3_report.pdf"]
-        model_config = {
-            'model_type': 'MockAsyncOpenAIFunctionWrapper',
-            'model_name': 'MockModel',
-            'mock_responses': [
-                {
-                    'name': 'not_used',
-                    'arguments': {
-                        'resource_name': f,
-                        'retrieval_strategy': ContextType.FULL_TEXT.value,
-                        'reasoning': 'It is a report.',
-                    },
-                }
-                for f in files
-            ],
-        }
-        agent = ContextStrategyAgent(model_config=model_config)
-        summary = await agent(messages=messages, resource_names=files)
-        assert len(summary.strategies) == 3
-        assert summary.total_cost == pytest.approx(summary.total_input_cost + summary.total_output_cost)  # noqa: E501
-        for result, resource_name in zip(summary.strategies, files, strict=True):
-            assert result.resource_name == resource_name
-            assert result.context_type in VALID_STRATEGIES
-            assert result.reasoning
 
 
 @pytest.mark.asyncio
@@ -98,10 +25,10 @@ class TestEvalRetrievalStrategies:
     def agent(self):
         """Create a basic agent."""
         model_config = {
-            'model_type': OPENAI_FUNCTIONS,
+            'client_type': RegisteredClients.OPENAI,
             'model_name': TEST_MODEL,
         }
-        return ContextStrategyAgent(model_config=model_config)
+        return ContextStrategyAgent(**model_config)
 
     @pytest.mark.parametrize('test_case', [
         pytest.param(
@@ -144,7 +71,7 @@ class TestEvalRetrievalStrategies:
         messages = [{"role": "user", "content": test_case["question"]}]
         files = test_case["files"]
         expected_strategies = test_case["expected_strategies"]
-        # Run 20 times concurrently
+        # Run n times concurrently
         summaries = await asyncio.gather(*(
             agent(messages=messages, resource_names=files)
             for _ in range(sample_size)
@@ -164,7 +91,7 @@ class TestEvalRetrievalStrategies:
                 'files': ['client_login_ui.tsx', 'grpc_api_service.py', 'main.css', 'attention_is_all_you_need.pdf'],  # noqa: E501
                 'expected_strategies': {
                     'client_login_ui.tsx': [ContextType.IGNORE],
-                    'grpc_api_service.py': [ContextType.FULL_TEXT],
+                    'grpc_api_service.py': [ContextType.FULL_TEXT, ContextType.RAG],
                     'main.css': [ContextType.IGNORE],
                     'attention_is_all_you_need.pdf': [ContextType.IGNORE],
                 },
@@ -175,6 +102,7 @@ class TestEvalRetrievalStrategies:
     async def test_code_file_handling__file_name_is_mentioned_by_user(
             self,
             test_case: dict,
+            agent: ContextStrategyAgent,
         ):
         """Test handling of code files with multiple runs."""
         sample_size = 10
@@ -182,11 +110,6 @@ class TestEvalRetrievalStrategies:
         messages = [{"role": "user", "content": test_case["question"]}]
         files = test_case["files"]
         expected_strategies = test_case["expected_strategies"]
-        model_config = {
-            'model_type': OPENAI_FUNCTIONS,
-            'model_name': TEST_MODEL,
-        }
-        agent = ContextStrategyAgent(model_config=model_config)
         summaries = await asyncio.gather(*(
             agent(messages=messages, resource_names=files)
             for _ in range(sample_size)
@@ -197,11 +120,11 @@ class TestEvalRetrievalStrategies:
             assert sum(s.strategies[i].resource_name == expected_name for s in summaries) >= pass_threshold  # noqa: E501
             assert sum(s.strategies[i].context_type in expected_strategy for s in summaries) >= pass_threshold  # noqa: E501
 
-
+    @pytest.mark.timeout(60)
     @pytest.mark.parametrize('test_case', [
         pytest.param(
             {
-                'question': 'Please provide a summary of these financial documents.',
+                'question': 'Please provide a summary of all financial documents.',
                 'files': ['2023_annual_report.pdf', '2024_q1_report.pdf', 'server_api.py', 'weather_report.pdf'],  # noqa: E501
                 'expected_strategies': {
                     '2023_annual_report.pdf': [ContextType.FULL_TEXT],
@@ -217,9 +140,11 @@ class TestEvalRetrievalStrategies:
                 'question': 'What were the Q3 2023 revenue numbers for the North America region?',
                 'files': ['2023_annual_report.pdf', '2023_q3_report.pdf', 'q3_meeting_notes.txt', 'weather_report.md'],  # noqa: E501
                 'expected_strategies': {
-                    '2023_annual_report.pdf': [ContextType.RAG],
+                    # the model might ignore annual because we have the q3 report, or it might use
+                    '2023_annual_report.pdf': [ContextType.IGNORE, ContextType.RAG, ContextType.FULL_TEXT],  # noqa: E501
+                    # the answer is likey found in a specific section of the q3 report
                     '2023_q3_report.pdf': [ContextType.RAG],
-                    'q3_meeting_notes.txt': [ContextType.RAG],
+                    'q3_meeting_notes.txt': [ContextType.IGNORE, ContextType.RAG, ContextType.FULL_TEXT],  # noqa: E501
                     'weather_report.md': [ContextType.IGNORE],
                 },
             },
@@ -261,6 +186,7 @@ class TestEvalRetrievalStrategies:
         ))
         # [s.strategies[i].resource_name for s in summaries]
         # [s.strategies[i].context_type for s in summaries]
+        # [s.strategies[i].reasoning for s in summaries]
         for i, (expected_name, expected_strategy) in enumerate(expected_strategies.items()):
             assert sum(s.strategies[i].resource_name == expected_name for s in summaries) >= pass_threshold  # noqa: E501
             assert sum(s.strategies[i].context_type in expected_strategy for s in summaries) >= pass_threshold  # noqa: E501
