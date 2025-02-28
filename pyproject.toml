@@ -13,10 +13,7 @@ dependencies = [
     "ruff",
     "grpcio",
     "grpcio-tools",
-    "openai>=1.63.2",
-    "tiktoken",
     "aiosqlite",
-    "anthropic>=0.42.0",
     "aiofiles>=24.1.0",
     "cachetools>=5.5.0",
     "pypdf>=5.1.0",
@@ -27,6 +24,7 @@ dependencies = [
     "sentence-transformers>=3.3.1",
     "mcp[cli]>=1.2.1",
     "dspy>=2.5.42",
+    "sik-llms>=0.1.5",
 ]
 
 [tool.pytest.ini_options]

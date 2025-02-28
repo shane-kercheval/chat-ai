@@ -4,7 +4,7 @@
 # Environment
 ####
 build-env:
-	uv sync
+	uv sync --refresh
 
 run: proto electron-proto
 	uv run python launch.py
@@ -57,6 +57,8 @@ clean: clean-proto
 	rm -rf .ruff_cache
 	rm -rf server/__pycache__
 	rm -rf tests/__pycache__
+	rm -rf client/node_modules
+	rm -rf data/chat.db
 
 ####
 # Electron

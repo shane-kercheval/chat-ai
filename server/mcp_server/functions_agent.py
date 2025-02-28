@@ -482,11 +482,6 @@ class FunctionAgent(dspy.ReAct):
                 await self._callback(event)
             else:
                 self._callback(event)
-                # await asyncio.get_event_loop().run_in_executor(
-                #     None,
-                #     self._callback,
-                #     event,
-                # )
 
 
     async def forward(self, **input_args: dict[str, object]) -> FunctionCallResult:
@@ -505,11 +500,6 @@ class FunctionAgent(dspy.ReAct):
         tool_predictions = []
         for index in range(self.max_iters):
             await self._emit(ThinkStartEvent(iteration=index, inputs=input_args))
-            # pred = self.react(
-            #     **input_args,
-            #     trajectory=_format(trajectory,
-            #     last_iteration=(idx == self.max_iters - 1)),
-            # )
 
             # execute the react function (which calls llm) using async I/O
             pred = await asyncio.get_event_loop().run_in_executor(

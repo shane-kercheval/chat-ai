@@ -3,15 +3,14 @@
 Defines an agent that determines the relevance and context needed from a resource based on a
 question.
 """
-import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 from textwrap import dedent
-from server.models import (
-    Function,
-    Parameter,
-    Model,
+from pydantic import BaseModel
+from sik_llms import (
+    create_client,
+    system_message,
 )
 
 
@@ -23,106 +22,84 @@ class ContextType(Enum):
     RAG = 'retrieve_relevant'
 
 
-@dataclass
-class ContextStrategyResult:
-    """Result of context strategy for a resource."""
+class ContextStrategy(BaseModel):
+    """Context strategy for a resource."""
 
     resource_name: str
     context_type: ContextType
     reasoning: str
 
 
+class ContextStrategies(BaseModel):
+    """Helper for "structured output" formatting."""
+
+    strategies: list[ContextStrategy]
+
+
 @dataclass
 class ContextStrategySummary:
     """Summary of context strategy results for all resources."""
 
-    strategies: list[ContextStrategyResult]
-    total_input_tokens: int
-    total_output_tokens: int
-    total_input_cost: float
-    total_output_cost: float
+    strategies: list[ContextStrategy]
+    input_tokens: int
+    output_tokens: int
+    input_cost: float
+    output_cost: float
     total_cost: float
 
 
-FUNCTION_DESCRIPTION = dedent("""
-Determine which context strategy (ignore, retrieve_full, or retrieve_relevant) is required for each resource to answer a question.
-- Use `ignore` if the resource is unnecessary to answer the question.
-- Use `retrieve_full` if the entire resource content is needed (e.g., summarization, outlining, or when semantic search isn't suitable like in code or CSV).
-- Use `retrieve_relevant` to extract specific relevant sections (e.g., for targeted or topical questions).
-- If the user specifies a resource, only consider that resource.
-- Infer resource relevance based on its name alone, even without content visibility.
+STRUCTURED_OUTPUT_INSTRUCTIONS = dedent("""
+[INSTRUCTIONS]:
+
+Determine the appropriate context strategy for each resource to efficiently answer the provided question:
+
+# Context Strategies
+
+- `FULL_TEXT`: Use when the entire resource content is necessary
+    - For document summarization or comprehensive analysis
+    - When semantic search is insufficient (e.g., code files, CSV data, structured formats)
+    - For broad questions requiring comprehensive document review
+
+- `RAG`: Use to extract specific relevant sections via semantic search
+    - When the question is specific and the answer is likely to be found in a specific section of the resource.
+
+- `IGNORE`: Use when the answer is likely not in the resource or the resource is irrelevant.
+
+# Decision Rules
+
+- If the user explicitly specifies resources, ONLY use those resources
+- Assess resource relevance based on filename/path even without seeing content
+- Include a brief 1-2 sentence justification for your selection
+- The `resource_name` field MUST EXACTLY match the provided resource name/path
 """).strip()  # noqa: E501
-
-RESOURCE_NAME_PARAMETER_DESCRIPTION = dedent("""
-The name of the resource currently being evaluated. Must return the exact name of this resource without additional formatting (e.g., no spaces, quotes, or backticks). Ignore resource names mentioned in the user's message; evaluate only the resource explicitly specified in this context."
-
-The name of the resource currently being evaluated to determine its relevance and how context should be extracted, if needed. This refers to the specific resource being considered and referenced in the "Resource name being considered:" section, not any resources mentioned by the user in their question. The name must exactly match the resource being evaluated (no extra formatting such as spaces, quotes, or backticks)."
-""").strip()  # noqa: E501
-
-
-STRATEGY_PARAMETER_DESCRIPTION = dedent("""
-Determines the context that will be extracted from a resource.
-
-- `ignore`: The resource is probably irrelevant to the question. For example, for code resources, if the user asks a question about the server, then the client resources probably aren't needed and should be ignored. Or if the user asks a UI question, then server resources probably aren't needed. Or for example, if the user asks a question that is likely to be found in the readme, then we don't need to include the code files/resources.
-- `retrieve_full`: Retrieve the entire resource if the full content probably is necessary to answer the question (e.g., summarization, outlines, or like code or CSV that are not suitable for semantic search).
-- `retrieve_relevant`: Extract specific relevant sections if the question targets specific topics or information within the resource.
-""").strip()  # noqa: E501
-
-
-@dataclass
-class ResourceContextFunction:
-    """Uses OpenAI function/tool calling for determining document handling strategy."""
-
-    @classmethod
-    def create(cls) -> Function:
-        """Create the function definition."""
-        return Function(
-            name='get_context_from_resource',
-            description=FUNCTION_DESCRIPTION,
-            parameters=[
-                Parameter(
-                    name='resource_name',
-                    type='string',
-                    required=True,
-                    description=RESOURCE_NAME_PARAMETER_DESCRIPTION,
-                ),
-                Parameter(
-                    name='retrieval_strategy',
-                    type='string',
-                    required=True,
-                    description=STRATEGY_PARAMETER_DESCRIPTION,
-                    enum=[
-                        'ignore',
-                        'retrieve_full',
-                        'retrieve_relevant',
-                    ],
-                ),
-                Parameter(
-                    name='reasoning',
-                    type='string',
-                    required=True,
-                    description='For logging purposes; a very short explanation of why this retrieval strategy is appropriate',  # noqa: E501
-                ),
-            ],
-        )
 
 
 class ContextStrategyAgent:
     """Agent that determines context strategy for resources based on a question."""
 
-    def __init__(self, model_config: dict, **model_kwargs: dict[str, object]):
+    def __init__(
+            self,
+            client_type: str | Enum | None,
+            model_name: str,
+            **model_kwargs: dict[str, object],
+        ):
         """
         Initialize the agent.
 
         Args:
-            model_config:
-                Configuration for the model. See Model.instantiate for format.
+            client_type:
+                Type of model to use. See `sik_llms.create_client` for details.
+            model_name:
+                Name of the model to use. See `sik_llms.create_client` for details.
             **model_kwargs:
-                Additional keyword arguments for the model.
+                Additional keyword arguments for the model (e.g. `temperature`, etc.).
         """
-        model_config['functions'] = [ResourceContextFunction.create()]
-        model_config = {**model_config, **model_kwargs}
-        self.wrapper = Model.instantiate(model_config)
+        self.model_client = create_client(
+            client_type=client_type,
+            model_name=model_name,
+            response_format=ContextStrategies,
+            **model_kwargs,
+        )
 
     async def __call__(
         self,
@@ -144,30 +121,32 @@ class ContextStrategyAgent:
         messages = deepcopy(messages)
         # remove system messages from user inut since that will confuse the agent
         messages = [m for m in messages if m['role'] != 'system']
-        responses = await asyncio.gather(*(
-            self.wrapper(
-                messages=[
-                    *messages,  # Keep all messages
-                    {'role': 'user', 'content': f"Resource name being considered: `{resource_name}`"},  # noqa: E501
-                ],
-                tool_choice='required',
-            )
-            for resource_name in resource_names
-        ))
-        strategies = [
-            ContextStrategyResult(
-                resource_name=r.function_call.arguments['resource_name'],
-                context_type=ContextType(r.function_call.arguments['retrieval_strategy']),
-                reasoning=r.function_call.arguments['reasoning'],
-            )
-            for r in responses
+        prompt = "[RESOURCES]:\n\n" + "\n".join(resource_names)
+        messages=[
+            *messages,
+            system_message(STRUCTURED_OUTPUT_INSTRUCTIONS + "\n\n" + prompt),
         ]
-        # Aggregate results and costs
+        async for response in self.model_client.run_async(messages=messages):
+            pass  # response_format only returns one response
+        if response.content.refusal:
+            raise ValueError(f"Model refused to provide structured output: '{response.content.refusal}'")  # noqa: E501
+
+        strategies = response.content.parsed.strategies
+        # for any missing strategy, add a default IGNORE strategy
+        for resource_name in resource_names:
+            if not any(s.resource_name == resource_name for s in strategies):
+                strategies.append(ContextStrategy(
+                    resource_name=resource_name,
+                    context_type=ContextType.IGNORE,
+                    reasoning="Resource was not mentioned in the conversation.",
+                ))
+        # order the strategies based on the order of the resources
+        strategies = sorted(strategies, key=lambda x: resource_names.index(x.resource_name))
         return ContextStrategySummary(
             strategies=strategies,
-            total_input_tokens=sum(r.input_tokens for r in responses),
-            total_output_tokens=sum(r.output_tokens for r in responses),
-            total_input_cost=sum(r.input_cost for r in responses),
-            total_output_cost=sum(r.output_cost for r in responses),
-            total_cost=sum(r.input_cost + r.output_cost for r in responses),
+            input_tokens=response.input_tokens,
+            output_tokens=response.output_tokens,
+            input_cost=response.input_cost,
+            output_cost=response.output_cost,
+            total_cost=response.input_cost,
         )
