@@ -38,7 +38,7 @@ DEFAULT_MODEL_CONFIGS_PATH = str(PROJECT_ROOT / 'artifacts/default_model_configs
 
 OPENAI_MODEL_NAME = 'gpt-4o-mini'
 CONTEXT_STRATEGY_MODEL_CONFIG = {
-    'client_type': RegisteredClients.OPENAI_FUNCTIONS,
+    'client_type': RegisteredClients.OPENAI,
     'model_name': 'gpt-4o',
     'temperature': 0.1,
 }

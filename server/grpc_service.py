@@ -263,7 +263,11 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
         # Create event handler that will manage both output string and client responses
         event_handler = ToolEventHandler(conv_id, model_index, request_id, response_id)
 
-        async with MCPClientManager(self.config.mcp_server_config_path) as manager:
+        server_config_path = self.config.mcp_server_config_path
+        if not server_config_path or not os.path.exists(server_config_path):
+            raise ValueError(f"MCP server config path `{server_config_path}` not found or invalid")
+
+        async with MCPClientManager(server_config_path) as manager:
             mcp_tools = await manager.list_tools()
             if not mcp_tools:
                 raise ValueError("No tools found on any connected MCP servers")
@@ -365,7 +369,6 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                         tool_output = output  # Capture the final consolidated output
 
                 tool_output = f"# Tool Processing Results:\n\nThe following is additional information from a tool used, please incorporate the information into your response.\n\n{tool_output}\n\n"  # noqa: E501
-                print(f"Tool output: {tool_output}")
                 model_messages[-1]['content'] = f"{model_messages[-1]['content']}\n\n{tool_output}"
 
             model_messages = inject_context(
@@ -391,10 +394,10 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                     yield chat_pb2.ChatStreamResponse(
                         conversation_id=conv_id,
                         summary=chat_pb2.ChatStreamResponse.Summary(
-                            input_tokens=response.total_input_tokens,
-                            output_tokens=response.total_output_tokens,
-                            input_cost=response.total_input_cost,
-                            output_cost=response.total_output_cost,
+                            input_tokens=response.input_tokens,
+                            output_tokens=response.output_tokens,
+                            input_cost=response.input_cost,
+                            output_cost=response.output_cost,
                             duration_seconds=response.duration_seconds,
                         ),
                         model_index=model_index,

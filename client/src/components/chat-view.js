@@ -268,7 +268,7 @@ export class ChatView {
                         `<span class="tool-name">tool: ${data.toolName}</span><br>`,
                         '<span class="tool-label">result:</span>',
                         '<pre>',
-                        `${resultValue} characters`,
+                        `${resultValue}`,
                         '</pre>',
                         '</div>'
                     ].join('');

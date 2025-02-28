@@ -453,7 +453,7 @@ requires-dist = [
     { name = "pyyaml" },
     { name = "ruff" },
     { name = "sentence-transformers", specifier = ">=3.3.1" },
-    { name = "sik-llms", specifier = ">=0.1.3" },
+    { name = "sik-llms", specifier = ">=0.1.5" },
 ]
 
 [[package]]
@@ -1500,7 +1500,7 @@ wheels = [
 
 [[package]]
 name = "sik-llms"
-version = "0.1.3"
+version = "0.1.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anthropic" },
@@ -1510,9 +1510,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "tiktoken" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2a/b8/a917e014d7c7bc52ee47408b6db7462b8bd650f7c2236e82c1a71cb18c03/sik_llms-0.1.3.tar.gz", hash = "sha256:ef9a7c706c6220d8242dbc4390467f30b7b781fcccc6615543258ae7f5e770ce", size = 41159 }
+sdist = { url = "https://files.pythonhosted.org/packages/ac/3c/360cbaf37a20e7fce4326203cb105cf693327622c403685459d2df17c315/sik_llms-0.1.5.tar.gz", hash = "sha256:12de280e6255ee1ca16ebf3981f7893ffee330e176f5474c5c13c0a67c5e6b34", size = 45333 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e4/ec/122e16b47248cd10b85b8a010ed878d9dbd7b115867d3de67d20f32e0a79/sik_llms-0.1.3-py3-none-any.whl", hash = "sha256:2df4fb5c287d4194f0b9ffed785092669963436097dfde2284223f9c72607c0e", size = 15829 },
+    { url = "https://files.pythonhosted.org/packages/01/fe/d5b5e37120980b080ab10c48c76543dcfbe8871e2e1d6607f420a9fe0b0b/sik_llms-0.1.5-py3-none-any.whl", hash = "sha256:c533f62334dce1ad6e567799a1cbc2b6b156b7cf34265bc78cfef849c18808a0", size = 17684 },
 ]
 
 [[package]]

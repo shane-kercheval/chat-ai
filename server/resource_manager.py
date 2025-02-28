@@ -14,7 +14,10 @@ import aiofiles
 from cachetools import LRUCache
 from dataclasses import dataclass
 from proto.generated import chat_pb2
-from server.agents.context_strategy_agent import ContextStrategyAgent, ContextType
+from server.agents.context_strategy_agent import (
+    ContextStrategyAgent,
+    ContextType,
+)
 from server.utilities import (
     clean_text_from_pdf,
     extract_text_from_pdf,
@@ -433,13 +436,7 @@ class ResourceManager:
             ]
         elif context_strategy == ContextStrategy.AUTO:
             # Get context strategy from agent for each file
-            client_type = self._context_strategy_model_config.pop('client_type')
-            model_name = self._context_strategy_model_config.pop('model_name')
-            agent = ContextStrategyAgent(
-                client_type=client_type,
-                model_name=model_name,
-                **self._context_strategy_model_config,
-            )
+            agent = ContextStrategyAgent(**self._context_strategy_model_config)
             summary = await agent(
                 messages=[{"role": "user", "content": query}],
                 resource_names=[r.path for r in resources],
