@@ -484,9 +484,9 @@ export class ContextManager extends AttachmentManager {
                 <div class="form-group">
                     <label for="resource-type">Type:</label>
                     <select id="resource-type">
-                        <option value="FILE">File</option>
-                        <option value="DIRECTORY">Directory</option>
                         <option value="WEBPAGE">Webpage</option>
+                        <option value="DIRECTORY">Directory</option>
+                        <option value="FILE">File</option>
                     </select>
                 </div>
                 <div class="form-group">
