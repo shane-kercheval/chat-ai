@@ -57,14 +57,18 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
         }
         ```
 
-
 ## TODO
 
-- [ ] Refresh resources if they don't exist in database (e.g. if database is deleted)
-- [ ] Clean up unused resources periodically (e.g. stored files and chunks)
+**Higher Priority**
+
+- [ ] Support Jupyter Notebooks resources (extract markdown and code)
+- [ ] Refresh resources if they don't exist in database (e.g. if database is deleted; or resource is cleaned/removed); user shouldn't see error if resource doesn't exist.
+    - [ ] Clean up unused resources periodically (e.g. stored files and chunks)
+- [ ] Need to refresh (i.e. rescrape) website resources after e.g. 1 day; otherwise we will never pick up changes
 - [ ] MCP Agent usage does not count in session summary
+- [ ] Create generic Agent and remove DSPy
+    - [ ] Or, need to merge `Function`/`Parameter` in `models.__init__` with classes in `functions_agent.py`. 
 - [ ] I'm not sure if MCP Agent works with multiple models at the same time.
-- [ ] Need to merge `Function`/`Parameter` in `models.__init__` with classes in `functions_agent.py`. 
 
 **Models**
 
@@ -84,15 +88,14 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 **Chat Messages**
 
 - [ ] Expandable chat text box (vertically)
-- [ ] `Branch Conversation` from Assitant Response
+- [x] `Branch Conversation` from Assitant Response
 - [ ] `Regenerate` Assistant Response/Message
 - [ ] `Edit` User/Assistant Message (which updates main conversation on server)
 - [ ] Tool tips over icons (e.g. `Copy Full Message`, `Copy Code Snippet`)
-- [ ] Format math equations
+- [x] Format math/LaTex equations
 - [ ] Should `Summary` disappear if using OpenAI Server?
     - [ ] What happens in UI on error (e.g. exceeded context limit)?
     - [ ] Perhaps move summary into side bar with other log messages/events from server
-- [ ] What happens if there is an error from api like OpenAI or grpc in general (can test by raising exception?)
 
 **Prompt**
 
@@ -100,7 +103,8 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 
 **Resources**
 
-- [ ] `Clear All Resources` button
+- [ ] We should either automatically switch to RAG if resource is over e.g. 100K characters, or have agent decide based on size and question
+- [x] `Clear All Resources` button
 - [ ] If you pass in a directory doesn't have `.gitignore` (e.g. subdirectory of the project) then it will still probably include a bunch of non-hidden files/directories that are not wanted (e.g. `__pycache__`, etc.). We probably want to create a list of common files/directories/patterns to ignore even without `.gitignore` file.
 
 **Server**
@@ -132,14 +136,12 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 - [ ] Stream Update events to client; client sidebar should have new tab for seeing updates
 - [ ] Cancelling the request doesn't add tokens/costs to summary.
 
-
 **Resources**
 
 - [ ] Need a way to clean up resources (e.g. unused)
     - [ ] perhaps track operations in manager and clean up after every N operations in one of the workers.
 - [ ] Need a way for client to view/delete resources?? Update resources (e.g. individually; resources not used in last N days; etc)
     - [ ] for web-page resources, we need a way to update the resource (for local files, we check if the contents have changed; we don't have an equivalent for web resource; perhaps check when it was last scrapped?)
-
 
 ## Ideas
 
