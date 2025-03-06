@@ -63,6 +63,8 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 
 - [ ] Add `API Key .env Name` to Model config option to override the name of the API key expected in the `.env` file or to set when using custom openai server.
     - [ ] Would need to update sik-llm to also take optional `api_key_env_name` for OpenAI/Anthropic
+    - [ ] Probably need a way to pass arbitrary key/value model parameters e.g. bedrock seems to require user id; other api specific options like disabling telemetry
+        - [ ] Could simply be a text box that allows json; althought it would be nice to have a key/value table
 - [X] Support Jupyter Notebooks resources (extract markdown and code)
 - [ ] Refresh resources if they don't exist in database (e.g. if database is deleted; or resource is cleaned/removed); user shouldn't see error if resource doesn't exist.
     - [ ] Clean up unused resources periodically (e.g. stored files and chunks)
