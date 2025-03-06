@@ -12,6 +12,10 @@ ignore = [
     "PLR0913", "PLR2004"
 ]
 
+exclude = [
+    "tests/test_files/notebooks/simple_notebook.ipynb"
+]
+
 [lint.per-file-ignores]
 "tests/*" = [
     # ignore same warnings as above
