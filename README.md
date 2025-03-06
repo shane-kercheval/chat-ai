@@ -89,6 +89,7 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 
 **Chat Messages**
 
+- [ ] When displaying code blocks, remove empty lines (i.e. the model's output will indent on blank lines which triggers linting warnings). Could probably do this for any line that contains only whitespace. Can't do this during streaming because we don't know if the line will be empty. Needs to be at the very end?
 - [ ] Expandable chat text box (vertically)
 - [x] `Branch Conversation` from Assitant Response
 - [ ] `Regenerate` Assistant Response/Message
@@ -98,6 +99,7 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 - [ ] Should `Summary` disappear if using OpenAI Server?
     - [ ] What happens in UI on error (e.g. exceeded context limit)?
     - [ ] Perhaps move summary into side bar with other log messages/events from server
+
 
 **Prompt**
 
