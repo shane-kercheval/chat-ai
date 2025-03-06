@@ -20,6 +20,7 @@ from server.agents.context_strategy_agent import (
 )
 from server.utilities import (
     clean_text_from_pdf,
+    extract_jupyter_notebook_content,
     extract_text_from_pdf,
     generate_directory_tree,
     extract_html_from_webpage,
@@ -81,6 +82,8 @@ async def _extract_file_content(path: str) -> tuple[str, str]:
     if path.endswith('.pdf'):
         content = await extract_text_from_pdf(path)
         content = clean_text_from_pdf(content)
+    elif path.endswith('.ipynb'):
+        content = extract_jupyter_notebook_content(path)
     else:
         async with aiofiles.open(path) as f:
             content = await f.read()
