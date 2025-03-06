@@ -1,4 +1,5 @@
 """Utilities for working with PDFs."""
+import json
 import os
 from pathlib import Path
 import re
@@ -322,3 +323,77 @@ def clean_html_from_webpage(html: str) -> str:
     lines = [line.strip() for line in text.splitlines()]
     lines = [line for line in lines if line]
     return '\n\n'.join(lines)
+
+
+def extract_jupyter_notebook_content(notebook_path: str) -> str:  # noqa: PLR0912
+    """
+    Extract code, markdown cells, and outputs from a Jupyter notebook file
+    and concatenate them into a single string.
+
+    Args:
+        notebook_path (str): Path to the Jupyter notebook file (.ipynb)
+
+    Returns:
+        str: Concatenated content of code and markdown cells with outputs
+    """
+    # Read the notebook file
+    try:
+        with open(notebook_path, encoding='utf-8') as file:
+            notebook = json.load(file)
+    except Exception as e:
+        return f"Error reading notebook file: {e!s}"
+
+    # Extract cells content
+    content = []
+    for cell in notebook.get('cells', []):
+        cell_type = cell.get('cell_type')
+        source = cell.get('source', [])
+        # Handle source as either a list or a string
+        cell_content = ''.join(source) if isinstance(source, list) else source
+        cell_content = cell_content.strip()
+        if not cell_content:
+            continue
+        if cell_type == 'markdown':
+            content.append(f"[MARKDOWN CELL]\n\n{cell_content}\n")
+        elif cell_type == 'code':
+            content.append(f"[CODE CELL]\n\n{cell_content}\n")
+            # Extract and format outputs if present
+            outputs = cell.get('outputs', [])
+            if outputs:
+                output_text = []
+                for output in outputs:
+                    output_type = output.get('output_type')
+                    if output_type == 'stream':
+                        stream_text = output.get('text', [])
+                        if isinstance(stream_text, list):
+                            output_text.append(''.join(stream_text))
+                        else:
+                            output_text.append(stream_text)
+                    elif output_type in ('execute_result', 'display_data'):
+                        # Handle various data formats, with preference for text/plain
+                        data = output.get('data', {})
+                        if 'text/plain' in data:
+                            text_data = data['text/plain']
+                            if isinstance(text_data, list):
+                                output_text.append(''.join(text_data))
+                            else:
+                                output_text.append(text_data)
+                        # could handle other formats like HTML, images, etc.
+                    elif output_type == 'error':
+                        # Format error output
+                        traceback = output.get('traceback', [])
+                        if isinstance(traceback, list):
+                            # Remove ANSI color codes if present
+                            ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+                            cleaned_traceback = [
+                                ansi_escape.sub('', line) if isinstance(line, str) else line
+                                for line in traceback
+                            ]
+                            output_text.append(''.join(cleaned_traceback))
+                        else:
+                            output_text.append(str(traceback))
+
+                if output_text:
+                    content.append("[CODE CELL OUTPUT]\n\n" + '\n'.join(output_text) + "\n")
+    # Join all content
+    return '\n'.join(content)

@@ -61,7 +61,7 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 
 **Higher Priority**
 
-- [ ] Support Jupyter Notebooks resources (extract markdown and code)
+- [X] Support Jupyter Notebooks resources (extract markdown and code)
 - [ ] Refresh resources if they don't exist in database (e.g. if database is deleted; or resource is cleaned/removed); user shouldn't see error if resource doesn't exist.
     - [ ] Clean up unused resources periodically (e.g. stored files and chunks)
 - [ ] Need to refresh (i.e. rescrape) website resources after e.g. 1 day; otherwise we will never pick up changes
@@ -109,16 +109,11 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 
 **Server**
 
-- [ ] Get models (family e.g. OpenAI name e.g. gpt-4o)
-
-- [ ] Get History
-- [ ] Clear History
-
+- [x] Get models (family e.g. OpenAI name e.g. gpt-4o)
+- [x] Get History
+- [x] Clear History
+- [x] Add Resource
 - [ ] Get prompts
-
-- [ ] Get Resources
-- [ ] Add Resource
-- [ ] Delete Resource
 - [ ] Need to decide when detect changes in files and make corresponding updates to e.g. vector database. For example it might be better to wait until the resource is needed because A) the resource may be changed frequently but rarely used and B) the same resource could either be used entirely or chunked depending on context type, or file type/size, etc.)  e.g. we would not want to chunk/rag on code files that are being directly used
 - [ ] `_unique_conv_id_locks` will continue to fill up indefinitely until the server is restarted
 

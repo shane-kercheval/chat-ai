@@ -9,6 +9,7 @@ from pathlib import Path
 from textwrap import dedent
 from server.utilities import (
     clean_text_from_pdf,
+    extract_jupyter_notebook_content,
     extract_text_from_pdf,
     generate_directory_tree,
     extract_html_from_webpage,
@@ -779,3 +780,40 @@ class TestWebpageTextCleaning:
         assert "Question? Answer." in text
         assert "Reference [1]. Next sentence." in text
         assert "lower case continuation of sentence." in text
+
+
+class TestJupyterNotebookContent:
+    """Tests for extracting content from Jupyter notebooks."""
+
+    def test__extract_jupyter_notebook_content__simple(self):
+        """Test extracting content from a simple Jupyter notebook."""
+        test_file = "tests/test_files/notebooks/simple_notebook.ipynb"
+        content = extract_jupyter_notebook_content(test_file)
+        print(content)
+        # test headers
+        assert '[MARKDOWN CELL]' in content
+        assert '[CODE CELL]' in content
+        assert '[CODE CELL OUTPUT]' in content
+        # test markdown cell
+        assert "This is a fake notebook." in content
+        assert "The goal is to test extraction." in content
+
+        # test code cell and output
+        assert 'print(f"Hello {123}")' in content
+        assert "Hello 123" in content
+
+        # test error handling
+        assert "import asdf" in content
+        assert "ModuleNotFoundError" in content
+
+        # ensure that the empty cells are not included
+        assert "CODE CELL]\n\n\n" not in content
+        assert "MARKDOWN CELL]\n\n\n" not in content
+
+        # test matplotlib output
+        assert "matplotlib.pyplot" in content
+        assert "<Figure size" in content
+
+        # test pandas dataframe output
+        assert "pd.DataFrame({'a': [1, 2, 3], 'b': [4, 5, 6]})" in content
+        assert "a  b\n0  1  4\n1  2  5\n2  3  6" in content

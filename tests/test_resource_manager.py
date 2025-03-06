@@ -588,6 +588,48 @@ class TestResourceManager:
             await manager.shutdown()
             Path(db_path).unlink(missing_ok=True)
 
+    async def test__add_resource__ipynb_file__success(self):
+        """Test successfully adding a Jupyter Notebook file resource."""
+        try:
+            db_path = create_temp_db_path()
+            ipynb_path = 'tests/test_files/notebooks/simple_notebook.ipynb'
+            # ensure file exists
+            assert os.path.exists(ipynb_path)
+            manager = ResourceManager(db_path)
+            await manager.initialize()
+            await manager.add_resource(
+                path=ipynb_path,
+                type=chat_pb2.ResourceType.FILE,
+                metadata={'type': 'ipynb'},
+            )
+            resource = await manager.get_resource(ipynb_path, type=chat_pb2.ResourceType.FILE)
+            assert resource
+            assert resource.path == ipynb_path
+            assert resource.type == chat_pb2.ResourceType.FILE
+            assert resource.content is not None
+            # see test__extract_jupyter_notebook_content__simple for related test
+            assert '[MARKDOWN CELL]' in resource.content
+            assert '[CODE CELL]' in resource.content
+            assert '[CODE CELL OUTPUT]' in resource.content
+            assert "This is a fake notebook." in resource.content
+            assert resource.last_accessed
+            assert resource.last_modified
+            assert resource.metadata['type'] == 'ipynb'
+
+            # Verify in database
+            async with aiosqlite.connect(db_path) as db:
+                cursor = await db.execute(
+                    "SELECT type, content FROM resources WHERE path = ?",
+                    (ipynb_path,),
+                )
+                result = await cursor.fetchone()
+                assert result is not None
+                assert result[0] == chat_pb2.ResourceType.FILE
+                assert 'This is a fake notebook.' in result[1]
+        finally:
+            await manager.shutdown()
+            Path(db_path).unlink(missing_ok=True)
+
 
 @pytest.mark.asyncio
 class TestDirectoryResources:
