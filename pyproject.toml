@@ -2,7 +2,7 @@
 name = "grpc_agents"
 version = "0.1.0"
 description = "A gRPC service to chat with LLMs and agents."
-requires-python = ">=3.12,<3.13"
+requires-python = "==3.12.*"
 
 dependencies = [
     "click",
