@@ -61,6 +61,8 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 
 **Higher Priority**
 
+- [ ] Add `API Key .env Name` to Model config option to override the name of the API key expected in the `.env` file or to set when using custom openai server.
+    - [ ] Would need to update sik-llm to also take optional `api_key_env_name` for OpenAI/Anthropic
 - [X] Support Jupyter Notebooks resources (extract markdown and code)
 - [ ] Refresh resources if they don't exist in database (e.g. if database is deleted; or resource is cleaned/removed); user shouldn't see error if resource doesn't exist.
     - [ ] Clean up unused resources periodically (e.g. stored files and chunks)
