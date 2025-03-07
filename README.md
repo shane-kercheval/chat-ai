@@ -20,8 +20,8 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
     - `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
 - install node
     - `brew install node`
-- install `uv`
-    - `pip install uv`
+- install `uv` - https://docs.astral.sh/uv/getting-started/installation/#standalone-installer
+    - e.g. `brew install uv`
 - add `.env` file with `OPENAI_API_KEY` and `ATHROPIC_API_KEY` keys/tokens.
 - run `make electron-setup`
 - run `make run`
@@ -61,9 +61,13 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 
 **Higher Priority**
 
+- [ ] Add `API Key .env Name` to Model config option to override the name of the API key expected in the `.env` file or to set when using custom openai server.
+    - [ ] Would need to update sik-llm to also take optional `api_key_env_name` for OpenAI/Anthropic
+    - [ ] Probably need a way to pass arbitrary key/value model parameters e.g. bedrock seems to require user id; other api specific options like disabling telemetry
+    - [ ] Could simply be a text box that allows json; althought it would be nice to have a key/value table
 - [X] Support Jupyter Notebooks resources (extract markdown and code)
 - [ ] Refresh resources if they don't exist in database (e.g. if database is deleted; or resource is cleaned/removed); user shouldn't see error if resource doesn't exist.
-    - [ ] Clean up unused resources periodically (e.g. stored files and chunks)
+- [ ] Clean up unused resources periodically (e.g. stored files and chunks)
 - [ ] Need to refresh (i.e. rescrape) website resources after e.g. 1 day; otherwise we will never pick up changes
 - [ ] MCP Agent usage does not count in session summary
 - [ ] Create generic Agent and remove DSPy
@@ -87,6 +91,7 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 
 **Chat Messages**
 
+- [ ] When displaying code blocks, remove empty lines (i.e. the model's output will indent on blank lines which triggers linting warnings). Could probably do this for any line that contains only whitespace. Can't do this during streaming because we don't know if the line will be empty. Needs to be at the very end?
 - [ ] Expandable chat text box (vertically)
 - [x] `Branch Conversation` from Assitant Response
 - [ ] `Regenerate` Assistant Response/Message
@@ -96,6 +101,7 @@ This project provides a client/UI for interacting with LLMs (e.g. OpenAI, Claude
 - [ ] Should `Summary` disappear if using OpenAI Server?
     - [ ] What happens in UI on error (e.g. exceeded context limit)?
     - [ ] Perhaps move summary into side bar with other log messages/events from server
+
 
 **Prompt**
 

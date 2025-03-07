@@ -24,7 +24,7 @@ from server.utilities import (
     extract_text_from_pdf,
     generate_directory_tree,
     extract_html_from_webpage,
-    clean_html_from_webpage,
+    html_to_markdown,
     CODE_EXTENSIONS,
 )
 from server.vector_db import Document, SimilarityScorer
@@ -118,7 +118,7 @@ class ResourceWorker(Process):
                     content = clean_text_from_pdf(content)
                 else:
                     content = asyncio.run(extract_html_from_webpage(path))
-                    content = clean_html_from_webpage(content)
+                    content = html_to_markdown(content)
                 last_modified = _get_utc_now()
             else:
                 raise ValueError(f"Invalid resource type: {type}")

@@ -1,13 +1,14 @@
 """Utilities for working with PDFs."""
 import json
 import os
-from pathlib import Path
 import re
 import aiohttp
 import aiofiles
 import pathspec
-from pypdf import PdfReader
 import contextlib
+from pathlib import Path
+from pypdf import PdfReader
+from markdownify import markdownify
 from bs4 import BeautifulSoup
 
 CODE_EXTENSIONS = {
@@ -271,7 +272,7 @@ async def extract_html_from_webpage(url: str) -> str:
         return await response.text()
 
 
-def clean_html_from_webpage(html: str) -> str:
+def html_to_markdown(html: str) -> str:
     """
     Clean text extracted from a webpage.
 
@@ -308,21 +309,12 @@ def clean_html_from_webpage(html: str) -> str:
 
     soup = BeautifulSoup(html, 'html.parser')
     soup = remove_junk(soup)
-    text = soup.get_text(separator='\n', strip=True)
-    # Step 1: Remove extra spaces
-    text = re.sub(r' +', ' ', text)
-    # Step 2: Replace newlines within paragraphs with spaces
-    # Rule: If a newline is not followed by an uppercase letter or double newline,
-    # replace it with a space, but preserve newlines after sentence-ending punctuation.
-    text = re.sub(r'(?<!\n)\n(?!\n|[A-Z]|[.!?])', ' ', text)
-    # Step 3: Normalize multiple newlines to single newlines for paragraphs
-    text = re.sub(r'\n{2,}', '\n', text)
-    # Step 4: Remove extra spaces and tabs but preserve newlines
-    text = re.sub(r'[^\S\n]+', ' ', text)
-    # Step 5: Remove trailing/leading whitespace from each line
-    lines = [line.strip() for line in text.splitlines()]
-    lines = [line for line in lines if line]
-    return '\n\n'.join(lines)
+    # Convert to markdown (requires installing markdownify)
+    # ATX style headings (e.g. # header 1) are used for better compatibility with markdown parsers
+    markdown = markdownify(str(soup), heading_style="ATX")
+    # Further cleanup of the markdown
+    markdown = re.sub(r'\n{3,}', '\n\n', markdown)  # Normalize excessive newlines
+    return markdown.strip()
 
 
 def extract_jupyter_notebook_content(notebook_path: str) -> str:  # noqa: PLR0912
