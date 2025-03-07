@@ -25,6 +25,7 @@ dependencies = [
     "mcp[cli]>=1.2.1",
     "dspy>=2.5.42",
     "sik-llms>=0.1.6",
+    "markdownify>=1.1.0",
 ]
 
 [tool.pytest.ini_options]

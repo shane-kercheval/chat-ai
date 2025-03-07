@@ -13,7 +13,7 @@ from server.utilities import (
     extract_text_from_pdf,
     generate_directory_tree,
     extract_html_from_webpage,
-    clean_html_from_webpage,
+    html_to_markdown,
 )
 
 
@@ -550,7 +550,14 @@ class TestExtractHtmlFromUrl:
 class TestWebpageTextCleaning:
     """Tests for web page text cleaning."""
 
-    def test__clean_html_from_webpage__removes_junk_tags(self):
+    def test__html_to_markdown__save_to_file_for_diff(self):
+        with open('tests/test_files/html_cleaning/html_example_ai_inspect.html') as f:
+            html = f.read()
+        cleaned_text = html_to_markdown(html)
+        with open('tests/test_files/html_cleaning/html_example_ai_inspect__cleaned.md', 'w') as f:
+            f.write(cleaned_text)
+
+    def test__html_to_markdown__removes_junk_tags(self):
         """Test removal of unwanted HTML tags."""
         html = """
         <html>
@@ -567,7 +574,7 @@ class TestWebpageTextCleaning:
             <nav>Menu items</nav>
         </html>
         """
-        text = clean_html_from_webpage(html)
+        text = html_to_markdown(html)
         assert "Main Content" in text
         assert "Important text" in text
         assert "alert('test')" not in text
@@ -576,7 +583,7 @@ class TestWebpageTextCleaning:
         assert "Menu items" not in text
         assert "Subscribe form" not in text
 
-    def test__clean_html_from_webpage__removes_junk_classes(self):
+    def test__html_to_markdown__removes_junk_classes(self):
         """Test removal of elements with unwanted classes."""
         html = """
         <html>
@@ -590,12 +597,12 @@ class TestWebpageTextCleaning:
             </body>
         </html>
         """
-        text = clean_html_from_webpage(html)
+        text = html_to_markdown(html)
         assert "Main Content" in text
         assert "Keep this" in text
         assert "Remove this" not in text
 
-    def test__clean_html_from_webpage__removes_junk_ids(self):
+    def test__html_to_markdown__removes_junk_ids(self):
         """Test removal of elements with unwanted IDs."""
         html = """
         <html>
@@ -608,94 +615,12 @@ class TestWebpageTextCleaning:
             </body>
         </html>
         """
-        text = clean_html_from_webpage(html)
+        text = html_to_markdown(html)
         assert "Main Content" in text
         assert "Keep this" in text
         assert "Remove this" not in text
 
-    def test__clean_html_from_webpage__preserves_paragraph_structure(self):
-        """Test that paragraph structure is preserved."""
-        html = """
-        <html>
-            <body>
-                <h1>Title   </h1>
-                <p>First    paragraph with multiple sentences.
-                This is still the first paragraph.
-                This is another. This
-                is another.</p>
-                <p> Second paragraph.</p>
-            </body>
-        </html>
-        """
-        text = clean_html_from_webpage(html)
-        expected = (
-            "Title\n\n"
-            "First paragraph with multiple sentences. This is still the first paragraph. This is another. This is another.\n\n"  # noqa: E501
-            "Second paragraph."
-        )
-        assert text == expected
-
-    def test__clean_html_from_webpage__sentence_continuations(self):
-        """Test handling of sentence continuations and line breaks."""
-        html = """
-        <html>
-            <body>
-                <!-- Basic sentence continuation -->
-                <p>This is a sentence
-                that continues here.</p>
-
-                <!-- Multiple sentence continuation -->
-                <p>This is a longer sentence
-                that continues here
-                and here too.</p>
-
-                <!-- Proper sentence breaks -->
-                <p>This is one sentence.
-                This is another sentence.</p>
-
-                <!-- Mixed cases -->
-                <p>First sentence.
-                Second sentence.
-                this is a continuation
-                of the second sentence.
-
-                But this is a new paragraph even within the same tag.
-                </p>
-
-                <!-- Parenthetical continuation -->
-                <p>This is a sentence
-                (with a parenthetical).</p>
-
-                <!-- Bracket continuation -->
-                <p>This is a sentence
-                [with a bracket].</p>
-
-                <!-- Multiple punctuation cases -->
-                <p>Question?
-                New sentence.
-                this continues the sentence.</p>
-
-                <p>Exclamation!
-                New sentence.
-                this continues the sentence.</p>
-            </body>
-        </html>
-        """
-        text = clean_html_from_webpage(html)
-        expected = (
-            "This is a sentence that continues here.\n\n"
-            "This is a longer sentence that continues here and here too.\n\n"
-            "This is one sentence. This is another sentence.\n\n"
-            "First sentence. Second sentence. this is a continuation of the second sentence.\n\n"
-            "But this is a new paragraph even within the same tag.\n\n"
-            "This is a sentence (with a parenthetical).\n\n"
-            "This is a sentence [with a bracket].\n\n"
-            "Question? New sentence. this continues the sentence.\n\n"
-            "Exclamation! New sentence. this continues the sentence."
-        )
-        assert text == expected
-
-    def test__clean_html_from_webpage__handles_special_characters(self):
+    def test__html_to_markdown__handles_special_characters(self):
         """Test handling of special characters and HTML entities."""
         html = """
         <html>
@@ -705,11 +630,11 @@ class TestWebpageTextCleaning:
             </body>
         </html>
         """
-        text = clean_html_from_webpage(html)
+        text = html_to_markdown(html)
         assert "Special chars: & < > \" © €" in text
         assert "Unicode: 你好 καλημέρα" in text
 
-    def test__clean_html_from_webpage__normalizes_whitespace(self):
+    def test__html_to_markdown__normalizes_whitespace(self):
         """Test whitespace normalization."""
         html = """
         <html>
@@ -723,17 +648,11 @@ class TestWebpageTextCleaning:
             </body>
         </html>
         """
-        text = clean_html_from_webpage(html)
-        expected = (
-            "Multiple spaces\n\n"
-            "Multiple\n\n"
-            "paragraphs\n\n"
-            "Trailing space\n\n"
-            "Leading space"
-        )
+        text = html_to_markdown(html)
+        expected = "Multiple spaces\n\nMultiple\nparagraphs\n\nTrailing space\n\nLeading space"
         assert text == expected
 
-    def test__clean_html_from_webpage__handles_nested_elements(self):
+    def test__html_to_markdown__handles_nested_elements(self):
         """Test cleaning of nested elements."""
         html = """
         <html>
@@ -749,20 +668,20 @@ class TestWebpageTextCleaning:
             </body>
         </html>
         """
-        text = clean_html_from_webpage(html)
+        text = html_to_markdown(html)
         assert "Keep this" in text
         assert "Keep this too" in text
         assert "Remove this" not in text
         assert "And this" not in text
 
-    def test__clean_html_from_webpage__handles_empty_input(self):
+    def test__html_to_markdown__handles_empty_input(self):
         """Test handling of empty or whitespace-only input."""
-        assert clean_html_from_webpage("") == ""
-        assert clean_html_from_webpage("   ") == ""
-        assert clean_html_from_webpage("<html></html>") == ""
-        assert clean_html_from_webpage("<html><body>  </body></html>") == ""
+        assert html_to_markdown("") == ""
+        assert html_to_markdown("   ") == ""
+        assert html_to_markdown("<html></html>") == ""
+        assert html_to_markdown("<html><body>  </body></html>") == ""
 
-    def test__clean_html_from_webpage__preserves_sentence_structure(self):
+    def test__html_to_markdown__preserves_sentence_structure(self):
         """Test that sentence structure is preserved appropriately."""
         html = """
         <html>
@@ -775,11 +694,9 @@ class TestWebpageTextCleaning:
             </body>
         </html>
         """
-        text = clean_html_from_webpage(html)
-        assert "First sentence. Second sentence!" in text
-        assert "Question? Answer." in text
-        assert "Reference [1]. Next sentence." in text
-        assert "lower case continuation of sentence." in text
+        text = html_to_markdown(html)
+        expected = "First sentence. Second sentence!\n\nQuestion? Answer.\n\nReference [1]. Next sentence.\n\nlower case\ncontinuation of sentence."  # noqa: E501
+        assert text == expected
 
 
 class TestJupyterNotebookContent:

@@ -68,7 +68,8 @@ Determine the appropriate context strategy for each resource to efficiently answ
 # Decision Rules
 
 - If the user explicitly specifies resources, ONLY use those resources
-- Assess resource relevance based on filename/path even without seeing content
+- Assess resource relevance based on filename/path even without seeing content.
+- If the question is a continuation of a previous question, consider the context strategy that would have been used for the previous question.
 - Include a brief 1-2 sentence justification for your selection
 - The `resource_name` field MUST EXACTLY match the provided resource name/path
 """).strip()  # noqa: E501
