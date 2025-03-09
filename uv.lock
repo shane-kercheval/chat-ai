@@ -455,7 +455,7 @@ requires-dist = [
     { name = "pyyaml" },
     { name = "ruff" },
     { name = "sentence-transformers", specifier = ">=3.3.1" },
-    { name = "sik-llms", specifier = ">=0.1.6" },
+    { name = "sik-llms", specifier = "==0.1.6" },
 ]
 
 [[package]]
