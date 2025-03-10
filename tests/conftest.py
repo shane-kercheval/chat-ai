@@ -5,14 +5,13 @@ import tempfile
 import time
 from pydantic import BaseModel
 import pytest
-
 from sik_llms import (
-    Function,
-    FunctionCallResponse,
-    FunctionCallResult,
+    Tool,
+    ToolPredictionResponse,
+    ToolPrediction,
     Client,
-    ChatChunkResponse,
-    ChatResponseSummary,
+    TextChunkEvent,
+    ResponseSummary,
     StructuredOutputResponse,
 )
 
@@ -56,10 +55,10 @@ class MockAsyncOpenAICompletionWrapper(Client):
         messages: list[dict[str, str]],
         model_name: str | None = None,  # noqa: ARG002
         **model_kwargs: object,  # noqa: ARG002
-    ) -> AsyncGenerator[ChatChunkResponse | ChatResponseSummary, None]:
+    ) -> AsyncGenerator[TextChunkEvent | ResponseSummary, None]:
         """Simulate streaming response with mock chunks and summary."""
         start_time = time.time()
-        chunks: list[ChatChunkResponse] = []
+        chunks: list[TextChunkEvent] = []
 
         if isinstance(self.mock_responses, list):
             next_response = self.mock_responses.pop(0)
@@ -67,7 +66,7 @@ class MockAsyncOpenAICompletionWrapper(Client):
             next_response = self.mock_responses
 
         for word in next_response.split():
-            chunk = ChatChunkResponse(
+            chunk = TextChunkEvent(
                 content=word + ' ',
                 logprob=-1.0,
             )
@@ -79,8 +78,8 @@ class MockAsyncOpenAICompletionWrapper(Client):
         input_tokens = (sum(len(str(m)) for m in messages) // 4) + 1
         output_tokens = (len(next_response) // 4) + 1
 
-        yield ChatResponseSummary(
-            content=next_response,
+        yield ResponseSummary(
+            response=next_response,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             input_cost=input_tokens * (0.03 / 1000),
@@ -97,12 +96,12 @@ class MockAsyncOpenAIFunctionWrapper(Client):
         self,
         model_name: str,
         server_url: str | None = None,
-        functions: list[Function] | None = None,
+        tools: list[Tool] | None = None,
         **model_kwargs: object,
     ) -> None:
         self.model = model_name
         self.server_url = server_url
-        self.functions = functions or []
+        self.tools = tools or []
         if 'mock_responses' not in model_kwargs:
             raise ValueError("mock_responses is required in model_kwargs")
         self.mock_responses = model_kwargs.pop('mock_responses')
@@ -111,17 +110,17 @@ class MockAsyncOpenAIFunctionWrapper(Client):
     async def run_async(
         self,
         messages: list[dict[str, str]],
-        functions: list[Function] | None = None,  # noqa: ARG002
+        tools: list[Tool] | None = None,  # noqa: ARG002
         tool_choice: str = 'required',  # noqa: ARG002
         model_name: str | None = None,  # noqa: ARG002
         **model_kwargs: object,  # noqa: ARG002
-    ) -> FunctionCallResponse:
+    ) -> ToolPredictionResponse:
         """Mock function calling with simulated response."""
         if isinstance(self.mock_responses, list):
             next_response = self.mock_responses.pop(0)
         else:
             next_response = self.mock_responses
-        function_call = FunctionCallResult(
+        tool_prediction = ToolPrediction(
             name=next_response['name'],
             arguments=next_response['arguments'],
             call_id='mock_call_123',
@@ -129,8 +128,8 @@ class MockAsyncOpenAIFunctionWrapper(Client):
         # Simulate token counts and costs
         input_tokens = sum(len(str(m)) for m in messages) // 4
         output_tokens = len(str(next_response['arguments'])) // 4
-        return FunctionCallResponse(
-            function_call=function_call,
+        return ToolPredictionResponse(
+            tool_prediction=tool_prediction,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             input_cost=input_tokens * (0.03 / 1000),
@@ -161,7 +160,7 @@ class MockAsyncOpenAIStructuredOutput(Client):
     async def run_async(
         self,
         messages: list[dict[str, str]],  # noqa: ARG002
-    ) -> AsyncGenerator[ChatResponseSummary, None]:
+    ) -> AsyncGenerator[ResponseSummary, None]:
         """Mock structured output response."""
         # Get mock response
         if isinstance(self.mock_responses, list):
@@ -172,8 +171,8 @@ class MockAsyncOpenAIStructuredOutput(Client):
         input_tokens = 3
         output_tokens = 3
         # Return structured output response
-        yield ChatResponseSummary(
-            content=StructuredOutputResponse(
+        yield ResponseSummary(
+            response=StructuredOutputResponse(
                 parsed=next_response.get('parsed', next_response),
                 refusal=next_response.get('refusal', None),
             ),

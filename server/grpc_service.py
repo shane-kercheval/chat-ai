@@ -31,7 +31,7 @@ from server.agents.context_strategy_agent import ContextType
 from server.async_merge import AsyncMerge
 from server.model_config_manager import ModelConfigManager
 from server.supported_models import SupportedModels
-from sik_llms import ChatChunkResponse, ChatResponseSummary, RegisteredClients, create_client
+from sik_llms import TextChunkEvent, ResponseSummary, RegisteredClients, create_client
 from server.conversation_manager import (
     ConversationManager,
     ConversationNotFoundError,
@@ -379,7 +379,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             async for response in model_client.run_async(messages=model_messages):
                 if context.cancelled():
                     return
-                if isinstance(response, ChatChunkResponse):
+                if isinstance(response, TextChunkEvent):
                     yield chat_pb2.ChatStreamResponse(
                         conversation_id=conv_id,
                         chunk=chat_pb2.ChatStreamResponse.Chunk(
@@ -390,7 +390,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                         entry_id=response_id,
                         request_entry_id=request_id,
                     )
-                elif isinstance(response, ChatResponseSummary):
+                elif isinstance(response, ResponseSummary):
                     yield chat_pb2.ChatStreamResponse(
                         conversation_id=conv_id,
                         summary=chat_pb2.ChatStreamResponse.Summary(
