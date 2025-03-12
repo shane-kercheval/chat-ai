@@ -1,4 +1,12 @@
 instructions:
+  - id: 70E4AA5D-278E-4C14-9E34-DACBFDA75C71
+    name: "Code Generation"
+    text: |
+      - Let's discuss a solution before generating any code.
+      - Let's implement the solution incrementally.
+  - id: CCEF21FC-EB9A-4441-B1C1-4593D0E656B0
+    name: "Code Changes"
+    text: "When suggesting updates to code, show only the specific lines or sections that need to be added, removed, or modified. Avoid regenerating entire functions or classes unless the majority of the code has changed and it's clearer to rewrite than to explain. For each change, explain exactly where the change needs to be made and keep the explanation concise and focused."
   - id: 6DDBE936-66F5-4A0D-851F-DDE65E855107
     name: "Python Code Style"
     text: |
@@ -28,9 +36,6 @@ instructions:
       - Use f-strings for formatting
       - Include example usage in docstrings for non-trivial functions
       - Give a brief overview of the code generated.
-  - id: CCEF21FC-EB9A-4441-B1C1-4593D0E656B0
-    name: "Code Changes"
-    text: "When suggesting updates to code, show only the specific lines or sections that need to be added, removed, or modified. Avoid regenerating entire functions or classes unless the majority of the code has changed and it's clearer to rewrite than to explain. For each change, explain exactly where the change needs to be made and keep the explanation concise and focused."
   - id: DF73A14C-A2E5-42AE-9503-2C83120027B2
     name: "Concise Responses"
     text: "Please provide clear, concise responses. When explaining concepts, give enough detail to be helpful but avoid unnecessary information."
