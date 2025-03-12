@@ -162,7 +162,7 @@ prompts:
     version: "1.0"
     description: "Compare Approaches"
     template: |
-      Compare and constract the following approaches:
+      Compare and contrast the following approaches:
 
       [APPRAOCH 1]
 
