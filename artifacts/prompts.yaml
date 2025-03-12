@@ -164,11 +164,11 @@ prompts:
     template: |
       Compare and contrast the following approaches:
 
-      [APPRAOCH 1]
+      [APPROACH 1]
 
       {{approach1}}
 
-      [APPRAOCH 2]
+      [APPROACH 2]
 
       {{approach2}}
 
