@@ -157,7 +157,6 @@ prompts:
       1. The improved version
       2. A brief explanation of key changes made
       3. Any suggestions for further improvements the author might consider
-prompts:
   - id: 1700A68F-F0E8-40DB-8E0C-532F691406BE
     type: compare
     version: "1.0"
