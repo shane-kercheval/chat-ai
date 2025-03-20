@@ -31,7 +31,7 @@ from server.agents.context_strategy_agent import ContextType
 from server.async_merge import AsyncMerge
 from server.model_config_manager import ModelConfigManager
 from server.supported_models import SupportedModels
-from sik_llms import TextChunkEvent, ResponseSummary, RegisteredClients, create_client
+from sik_llms import TextChunkEvent, TextResponse, RegisteredClients, create_client
 from server.conversation_manager import (
     ConversationManager,
     ConversationNotFoundError,
@@ -390,7 +390,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                         entry_id=response_id,
                         request_entry_id=request_id,
                     )
-                elif isinstance(response, ResponseSummary):
+                elif isinstance(response, TextResponse):
                     yield chat_pb2.ChatStreamResponse(
                         conversation_id=conv_id,
                         summary=chat_pb2.ChatStreamResponse.Summary(
@@ -399,6 +399,10 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                             input_cost=response.input_cost,
                             output_cost=response.output_cost,
                             duration_seconds=response.duration_seconds,
+                            cache_write_tokens=response.cache_write_tokens if hasattr(response, 'cache_write_tokens') else None,
+                            cache_read_tokens=response.cache_read_tokens if hasattr(response, 'cache_read_tokens') else None,
+                            cache_write_cost=response.cache_write_cost if hasattr(response, 'cache_write_cost') else None,
+                            cache_read_cost=response.cache_read_cost if hasattr(response, 'cache_read_cost') else None,
                         ),
                         model_index=model_index,
                         entry_id=response_id,

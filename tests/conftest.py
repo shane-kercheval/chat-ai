@@ -11,7 +11,7 @@ from sik_llms import (
     ToolPrediction,
     Client,
     TextChunkEvent,
-    ResponseSummary,
+    TextResponse,
     StructuredOutputResponse,
 )
 
@@ -55,7 +55,7 @@ class MockAsyncOpenAICompletionWrapper(Client):
         messages: list[dict[str, str]],
         model_name: str | None = None,  # noqa: ARG002
         **model_kwargs: object,  # noqa: ARG002
-    ) -> AsyncGenerator[TextChunkEvent | ResponseSummary, None]:
+    ) -> AsyncGenerator[TextChunkEvent | TextResponse, None]:
         """Simulate streaming response with mock chunks and summary."""
         start_time = time.time()
         chunks: list[TextChunkEvent] = []
@@ -78,7 +78,7 @@ class MockAsyncOpenAICompletionWrapper(Client):
         input_tokens = (sum(len(str(m)) for m in messages) // 4) + 1
         output_tokens = (len(next_response) // 4) + 1
 
-        yield ResponseSummary(
+        yield TextResponse(
             response=next_response,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
@@ -160,7 +160,7 @@ class MockAsyncOpenAIStructuredOutput(Client):
     async def run_async(
         self,
         messages: list[dict[str, str]],  # noqa: ARG002
-    ) -> AsyncGenerator[ResponseSummary, None]:
+    ) -> AsyncGenerator[TextResponse, None]:
         """Mock structured output response."""
         # Get mock response
         if isinstance(self.mock_responses, list):
@@ -171,7 +171,7 @@ class MockAsyncOpenAIStructuredOutput(Client):
         input_tokens = 3
         output_tokens = 3
         # Return structured output response
-        yield ResponseSummary(
+        yield TextResponse(
             response=StructuredOutputResponse(
                 parsed=next_response.get('parsed', next_response),
                 refusal=next_response.get('refusal', None),

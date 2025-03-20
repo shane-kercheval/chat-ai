@@ -4,7 +4,7 @@ from sik_llms import (
     create_client,
     Client,
     TextChunkEvent,
-    ResponseSummary,
+    TextResponse,
     Tool,
     Parameter,
 )
@@ -57,7 +57,7 @@ async def test_mock_wrapper_custom_response() -> None:
         if isinstance(response, TextChunkEvent):
             response_text += response.content
     assert response_text.strip() == "Custom mock response"
-    assert isinstance(responses[-1], ResponseSummary)
+    assert isinstance(responses[-1], TextResponse)
 
 
 @pytest.mark.asyncio
@@ -77,7 +77,7 @@ async def test_mock_wrapper_multiple_responses() -> None:
         if isinstance(response, TextChunkEvent):
             response_text += response.content
     assert response_text.strip() == "Custom mock response 1"
-    assert isinstance(responses[-1], ResponseSummary)
+    assert isinstance(responses[-1], TextResponse)
 
     response_text = ""
     responses = []
@@ -86,7 +86,7 @@ async def test_mock_wrapper_multiple_responses() -> None:
         if isinstance(response, TextChunkEvent):
             response_text += response.content
     assert response_text.strip() == "Custom mock response 2"
-    assert isinstance(responses[-1], ResponseSummary)
+    assert isinstance(responses[-1], TextResponse)
 
 
 @pytest.fixture
