@@ -42,10 +42,17 @@ CONTEXT_STRATEGY_MODEL_CONFIG = {
 }
 ANTHROPIC_MODEL_NAME = 'claude-3-5-haiku-latest'
 
-EXPECTED_NUMBER_OF_CONFIGS = None
+EXPECTED_NUM_SUPPORTED_MODELS = None
 with open(SUPPORTED_MODELS_PATH) as f:
     supported_models = yaml.safe_load(f)
-    EXPECTED_NUMBER_OF_CONFIGS = len(supported_models['supported_models'])
+    EXPECTED_NUM_SUPPORTED_MODELS = len(supported_models['supported_models'])
+    del supported_models
+
+EXPECTED_NUM_MODEL_CONFIGS = None
+with open(DEFAULT_MODEL_CONFIGS_PATH) as f:
+    default_model_configs = yaml.safe_load(f)
+    EXPECTED_NUM_MODEL_CONFIGS = len(default_model_configs['default_model_configs'])
+    del default_model_configs
 
 # this takes a few seconds to load so let's load it once
 EMBEDDING_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
@@ -2104,7 +2111,7 @@ class TestConfigurationService:
         """Test getting model configs when none exist."""
         stub = chat_pb2_grpc.ConfigurationServiceStub(grpc_channel)
         response = await stub.get_model_configs(empty_pb2.Empty())
-        assert len(response.configs) == EXPECTED_NUMBER_OF_CONFIGS
+        assert len(response.configs) == EXPECTED_NUM_MODEL_CONFIGS
 
     async def test__model_config__crud_operations(self, grpc_channel):  # noqa: ANN001
         """Test Create, Read, Update, Delete operations for model configs."""
@@ -2133,7 +2140,7 @@ class TestConfigurationService:
         assert saved_config.config.model_parameters.max_tokens == new_config.config.model_parameters.max_tokens  # noqa: E501
         # Get all configs
         get_response = await stub.get_model_configs(empty_pb2.Empty())
-        assert len(get_response.configs) == EXPECTED_NUMBER_OF_CONFIGS + 1
+        assert len(get_response.configs) == EXPECTED_NUM_MODEL_CONFIGS + 1
         assert get_response.configs[-1] == saved_config
 
         # Update config
@@ -2156,7 +2163,7 @@ class TestConfigurationService:
 
         # Verify deletion
         get_response = await stub.get_model_configs(empty_pb2.Empty())
-        assert len(get_response.configs) == EXPECTED_NUMBER_OF_CONFIGS
+        assert len(get_response.configs) == EXPECTED_NUM_MODEL_CONFIGS
 
     async def test__delete_model_config__nonexistent(self, grpc_channel):  # noqa: ANN001
         """Test deleting non-existent config."""

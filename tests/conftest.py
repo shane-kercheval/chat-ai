@@ -171,11 +171,9 @@ class MockAsyncOpenAIStructuredOutput(Client):
         input_tokens = 3
         output_tokens = 3
         # Return structured output response
-        yield TextResponse(
-            response=StructuredOutputResponse(
-                parsed=next_response.get('parsed', next_response),
-                refusal=next_response.get('refusal', None),
-            ),
+        yield StructuredOutputResponse(
+            parsed=next_response.get('parsed', next_response),
+            refusal=next_response.get('refusal', None),
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             input_cost=input_tokens * (0.03 / 1000),
