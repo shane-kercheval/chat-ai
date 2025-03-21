@@ -352,7 +352,6 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                 raise ValueError(f"No messages found for conversation `{conv_id}`")
 
             if enable_tools:
-                print("Tools enabled")
                 # Create queue for tool events
                 tool_output = None
                 async for response, output in self._run_function_agent(
@@ -376,7 +375,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                 resource_context=resource_context,
                 instructions=instructions,
             )
-            async for response in model_client.run_async(messages=model_messages):
+            async for response in model_client.stream(messages=model_messages):
                 if context.cancelled():
                     return
                 if isinstance(response, TextChunkEvent):
@@ -396,13 +395,13 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                         summary=chat_pb2.ChatStreamResponse.Summary(
                             input_tokens=response.input_tokens,
                             output_tokens=response.output_tokens,
-                            input_cost=response.input_cost,
-                            output_cost=response.output_cost,
+                            cache_write_tokens=response.cache_write_tokens or 0,
+                            cache_read_tokens=response.cache_read_tokens or 0,
+                            input_cost=response.input_cost or 0.0,
+                            output_cost=response.output_cost or 0.0,
+                            cache_write_cost=response.cache_write_cost or 0.0,
+                            cache_read_cost=response.cache_read_cost or 0.0,
                             duration_seconds=response.duration_seconds,
-                            cache_write_tokens=response.cache_write_tokens if hasattr(response, 'cache_write_tokens') else None,
-                            cache_read_tokens=response.cache_read_tokens if hasattr(response, 'cache_read_tokens') else None,
-                            cache_write_cost=response.cache_write_cost if hasattr(response, 'cache_write_cost') else None,
-                            cache_read_cost=response.cache_read_cost if hasattr(response, 'cache_read_cost') else None,
                         ),
                         model_index=model_index,
                         entry_id=response_id,

@@ -27,7 +27,8 @@ function setupIpcHandlers(mainWindow) {
             }
     
             // Pass the array of model configurations to `sendChatRequest`
-            const call = sendChatRequest(conversationId,
+            const call = sendChatRequest(
+                conversationId,
                 modelConfigs,
                 messageText,
                 instructions,
@@ -76,8 +77,12 @@ function setupIpcHandlers(mainWindow) {
                         summary: {
                             input_tokens: summary.getInputTokens(),
                             output_tokens: summary.getOutputTokens(),
+                            cache_write_tokens: summary.getCacheWriteTokens(),
+                            cache_read_tokens: summary.getCacheReadTokens(),
                             input_cost: summary.getInputCost(),
                             output_cost: summary.getOutputCost(),
+                            cache_write_cost: summary.getCacheWriteCost(),
+                            cache_read_cost: summary.getCacheReadCost(),
                             duration_seconds: summary.getDurationSeconds(),
                         },
                         modelIndex: response.getModelIndex(),

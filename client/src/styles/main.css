@@ -353,6 +353,17 @@ body {
     color: #333;
 }
 
+/* Keep Total Cost at current size, make other items smaller */
+.token-summary div:first-of-type {
+    font-size: 1em; /* Keep the same size as inherited */
+    font-weight: bold; /* Make Total Cost bold */
+}
+
+.token-summary div:not(:first-of-type) {
+    font-size: 0.8em; /* Make all other items smaller */
+    margin-bottom: 5px; /* Reduce spacing between items */
+}
+
 .message {
     margin: 15px 0;
     padding: 15px 20px;

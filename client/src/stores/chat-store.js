@@ -16,8 +16,12 @@ export class ChatStore extends EventEmitter {
             messages: 0,
             inputTokens: 0,
             outputTokens: 0,
+            cacheWriteTokens: 0,
+            cacheReadTokens: 0, 
             inputCost: 0,
-            outputCost: 0
+            outputCost: 0,
+            cacheWriteCost: 0,
+            cacheReadCost: 0
         };
         this.setupIpcListeners();
         // loadInitialData is now called from app.js after server is ready
@@ -250,8 +254,12 @@ export class ChatStore extends EventEmitter {
         this.totals.messages++;
         this.totals.inputTokens += summary.input_tokens;
         this.totals.outputTokens += summary.output_tokens;
+        this.totals.cacheWriteTokens += summary.cache_write_tokens;
+        this.totals.cacheReadTokens += summary.cache_read_tokens;
         this.totals.inputCost += summary.input_cost;
         this.totals.outputCost += summary.output_cost;
+        this.totals.cacheWriteCost += summary.cache_write_cost;
+        this.totals.cacheReadCost += summary.cache_read_cost;
         this.emit('totalsUpdated', this.totals);
     }
 }

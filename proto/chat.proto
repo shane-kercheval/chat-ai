@@ -158,9 +158,13 @@ message ChatStreamResponse {
     message Summary {
         int32 input_tokens = 1;
         int32 output_tokens = 2;
-        double input_cost = 3;
-        double output_cost = 4;
-        double duration_seconds = 5;
+        int32 cache_write_tokens = 3;
+        int32 cache_read_tokens = 4;
+        double input_cost = 5;
+        double output_cost = 6;
+        double cache_write_cost = 7;
+        double cache_read_cost = 8;
+        double duration_seconds = 9;
     }
     message ChatError {
         string error_message = 1;
