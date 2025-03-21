@@ -1,13 +1,11 @@
 """Main gRPC service for the agent's chat service."""
 import argparse
 from collections.abc import AsyncGenerator
-from copy import deepcopy
 from dataclasses import dataclass
 import logging
 import logging.config
 import os
 import sys
-import textwrap
 from uuid import uuid4
 import aiofiles
 import grpc
@@ -79,35 +77,35 @@ class ConfigurationServiceConfig:
     default_model_configs: list[dict]
 
 
-def inject_context(
-        messages: list[dict],
-        resource_context: str | None,
-        instructions: list[str] | None,
-    ) -> list[dict]:
-    """Inject context into the user message."""
-    messages = deepcopy(messages)
-    final_context = ""
-    if resource_context:
-        final_context = f"# Use the following context for your response if applicable:\n\n{resource_context}\n\n---\n\n"  # noqa: E501
-        logging.info(f"Using resource context with {len(resource_context):,} characters.")
+# def inject_context(
+#         messages: list[dict],
+#         resource_context: str | None,
+#         instructions: list[str] | None,
+#     ) -> list[dict]:
+#     """Inject context into the user message."""
+#     messages = deepcopy(messages)
+#     final_context = ""
+#     if resource_context:
+#         final_context = f"# Use the following context for your response if applicable:\n\n{resource_context}\n\n---\n\n"  # noqa: E501
+#         logging.info(f"Using resource context with {len(resource_context):,} characters.")
 
-    if instructions:
-        instructions = [
-            textwrap.dedent(i.strip())
-            for i in instructions
-            if i and i.strip()  # Filter out empty/whitespace instructions
-        ]
-        # remove duplicate instructions
-        instructions = list(set(instructions))
-        if instructions:
-            instructions = '\n\n'.join(instructions)
-            final_context += f'# Use the following instructions for your response:\n\n{instructions}\n\n---\n\n'  # noqa: E501
+#     if instructions:
+#         instructions = [
+#             textwrap.dedent(i.strip())
+#             for i in instructions
+#             if i and i.strip()  # Filter out empty/whitespace instructions
+#         ]
+#         # remove duplicate instructions
+#         instructions = list(set(instructions))
+#         if instructions:
+#             instructions = '\n\n'.join(instructions)
+#             final_context += f'# Use the following instructions for your response:\n\n{instructions}\n\n---\n\n'  # noqa: E501
 
-    # Create new message with instructions + original content
-    # TODO: this assumes the user message is the last message; i don't know why it
-    # wouldn't be; but not sure i want to raise an exception if it isn't
-    messages[-1]['content'] = f"{final_context}{messages[-1]['content']}"
-    return messages
+#     # Create new message with instructions + original content
+#     # TODO: this assumes the user message is the last message; i don't know why it
+#     # wouldn't be; but not sure i want to raise an exception if it isn't
+#     messages[-1]['content'] = f"{final_context}{messages[-1]['content']}"
+#     return messages
 
 
 def proto_to_dict(proto_obj) -> dict[str, object]:  # noqa: ANN001
@@ -249,7 +247,6 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
         finally:
             self.event_subscribers.remove(queue)
 
-
     async def _run_function_agent(
         self,
         messages: list[dict],
@@ -306,7 +303,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             # Yield final response with consolidated output
             yield None, event_handler.get_output()
 
-    async def _process_model(
+    async def _process_model(  # noqa: PLR0912
         self,
         model_config: chat_pb2.ModelConfig,
         instructions: list[str],
@@ -331,12 +328,6 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             logging.info(f"max_tokens: `{params.max_tokens if params.HasField("max_tokens") else None}`")  # noqa: E501
             logging.info(f"top_p: `{params.top_p if params.HasField("top_p") else None}`")
             logging.info(f"enable_tools: `{enable_tools}`")
-
-            model_client = create_client(
-                client_type=client_type,
-                model_name=model_name,
-                **proto_to_dict(params),
-            )
 
             # Get conversation history
             messages = await self.conversation_manager.get_messages(conv_id)
@@ -370,10 +361,21 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                 tool_output = f"# Tool Processing Results:\n\nThe following is additional information from a tool used, please incorporate the information into your response.\n\n{tool_output}\n\n"  # noqa: E501
                 model_messages[-1]['content'] = f"{model_messages[-1]['content']}\n\n{tool_output}"
 
-            model_messages = inject_context(
-                messages=model_messages,
-                resource_context=resource_context,
-                instructions=instructions,
+            # model_messages = inject_context(
+            #     messages=model_messages,
+            #     resource_context=resource_context,
+            #     instructions=instructions,
+            # )
+            cache_context = []
+            if resource_context:
+                cache_context.append(resource_context)
+            if instructions:
+                cache_context.extend(instructions)
+            model_client = create_client(
+                client_type=client_type,
+                model_name=model_name,
+                cache_content=cache_context,
+                **proto_to_dict(params),
             )
             async for response in model_client.stream(messages=model_messages):
                 if context.cancelled():
@@ -991,6 +993,7 @@ class ConfigurationService(chat_pb2_grpc.ConfigurationServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
             raise
+
 
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""

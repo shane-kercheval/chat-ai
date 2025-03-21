@@ -36,7 +36,6 @@ export class IpcService {
             return history.conversationsList.map(conv => ({
                 id: conv.conversationId,
                 entries: conv.entriesList,
-                // messages: this.transformMessages(conv.entriesList)
             }));
         } catch (error) {
             console.error('Error fetching conversations:', error);

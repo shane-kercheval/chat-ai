@@ -50,7 +50,7 @@ class MockAsyncOpenAICompletionWrapper(Client):
        self.mock_responses = model_kwargs.pop('mock_responses', 'This is a mock response.')
        self.model_parameters = model_kwargs
 
-   async def run_async(
+   async def stream(
         self,
         messages: list[dict[str, str]],
         model_name: str | None = None,  # noqa: ARG002
@@ -107,7 +107,7 @@ class MockAsyncOpenAIFunctionWrapper(Client):
         self.mock_responses = model_kwargs.pop('mock_responses')
         self.model_kwargs = model_kwargs or {}
 
-    async def run_async(
+    async def stream(
         self,
         messages: list[dict[str, str]],
         tools: list[Tool] | None = None,  # noqa: ARG002
@@ -157,7 +157,7 @@ class MockAsyncOpenAIStructuredOutput(Client):
         self.mock_responses = model_kwargs.pop('mock_responses')
         self.model_kwargs = model_kwargs or {}
 
-    async def run_async(
+    async def stream(
         self,
         messages: list[dict[str, str]],  # noqa: ARG002
     ) -> AsyncGenerator[TextResponse, None]:
