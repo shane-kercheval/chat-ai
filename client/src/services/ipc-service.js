@@ -36,7 +36,6 @@ export class IpcService {
             return history.conversationsList.map(conv => ({
                 id: conv.conversationId,
                 entries: conv.entriesList,
-                // messages: this.transformMessages(conv.entriesList)
             }));
         } catch (error) {
             console.error('Error fetching conversations:', error);
@@ -47,27 +46,6 @@ export class IpcService {
     async deleteConversation(conversationId) {
         return this.ipcRenderer.invoke('delete-conversation', conversationId);
     }
-    
-    // transformMessages(entries) {
-    //     return entries.map(entry => {
-    //         if (entry.chatMessage) {
-    //             return {
-    //                 role: entry.chatMessage.role === 1 ? 'user' : 'assistant',
-    //                 content: entry.chatMessage.content
-    //             };
-    //         } else if (entry.singleModelResponse) {
-    //             return {
-    //                 role: 'assistant',
-    //                 content: entry.singleModelResponse.message.content
-    //             };
-    //         } else if (entry.multiModelResponse) {
-    //             return {
-    //                 role: 'assistant',
-    //                 content: entry.multiModelResponse.responsesList[0].message.content
-    //             };
-    //         }
-    //     }).filter(msg => msg);
-    // }
 
     async getSupportedModels() {
         return this.ipcRenderer.invoke('get-supported-models');

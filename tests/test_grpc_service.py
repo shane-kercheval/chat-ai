@@ -1,6 +1,5 @@
 """Test the gRPC server."""
 import asyncio
-from copy import deepcopy
 from pathlib import Path
 import tempfile
 import aiofiles
@@ -23,7 +22,6 @@ from server.grpc_service import (
     ConfigurationServiceConfig,
     ContextService,
     ContextServiceConfig,
-    inject_context,
 )
 from server.vector_db import SimilarityScorer
 from dotenv import load_dotenv
@@ -44,10 +42,17 @@ CONTEXT_STRATEGY_MODEL_CONFIG = {
 }
 ANTHROPIC_MODEL_NAME = 'claude-3-5-haiku-latest'
 
-EXPECTED_NUMBER_OF_CONFIGS = None
+EXPECTED_NUM_SUPPORTED_MODELS = None
 with open(SUPPORTED_MODELS_PATH) as f:
     supported_models = yaml.safe_load(f)
-    EXPECTED_NUMBER_OF_CONFIGS = len(supported_models['supported_models'])
+    EXPECTED_NUM_SUPPORTED_MODELS = len(supported_models['supported_models'])
+    del supported_models
+
+EXPECTED_NUM_MODEL_CONFIGS = None
+with open(DEFAULT_MODEL_CONFIGS_PATH) as f:
+    default_model_configs = yaml.safe_load(f)
+    EXPECTED_NUM_MODEL_CONFIGS = len(default_model_configs['default_model_configs'])
+    del default_model_configs
 
 # this takes a few seconds to load so let's load it once
 EMBEDDING_MODEL = SentenceTransformer('all-MiniLM-L6-v2')
@@ -1552,88 +1557,88 @@ class TestCompletionService:
         # check response code
         pytest.fail("Expected error response")
 
-    async def test__inject_context__empty_context(self):
-        messages = [
-            {
-            'role': 'user',
-            'content': 'Test message',
-            },
-        ]
-        messages_cached = deepcopy(messages)
-        new_messages = inject_context(messages, resource_context=None, instructions=None)
-        assert messages_cached == messages  # no side effects
-        assert messages_cached == new_messages  # no changes for empty context
+    # async def test__inject_context__empty_context(self):
+    #     messages = [
+    #         {
+    #         'role': 'user',
+    #         'content': 'Test message',
+    #         },
+    #     ]
+    #     messages_cached = deepcopy(messages)
+    #     new_messages = inject_context(messages, resource_context=None, instructions=None)
+    #     assert messages_cached == messages  # no side effects
+    #     assert messages_cached == new_messages  # no changes for empty context
 
-        new_messages = inject_context(messages, resource_context='', instructions=[])
-        assert messages_cached == messages  # no side effects
-        assert messages_cached == new_messages  # no changes for empty context
+    #     new_messages = inject_context(messages, resource_context='', instructions=[])
+    #     assert messages_cached == messages  # no side effects
+    #     assert messages_cached == new_messages  # no changes for empty context
 
-        new_messages = inject_context(messages, resource_context='', instructions=['', '', None])
-        assert messages_cached == messages  # no side effects
-        assert messages_cached == new_messages  # no changes for empty context
+    #     new_messages = inject_context(messages, resource_context='', instructions=['', '', None])
+    #     assert messages_cached == messages  # no side effects
+    #     assert messages_cached == new_messages  # no changes for empty context
 
-    async def test__inject_context__empty_resource_context_with_instructions(self):
-        messages = [
-            {
-            'role': 'user',
-            'content': 'Test message',
-            },
-        ]
-        messages_cached = deepcopy(messages)
-        instructions = [
-            'Test Instruction 1',
-            'Test Instruction 2',
-            'Test Instruction 2',
-        ]
-        new_messages = inject_context(messages, resource_context=None, instructions=instructions)
-        assert messages_cached == messages  # no side effects
-        assert new_messages[0]['role'] == 'user'
-        assert messages[0]['content'] in new_messages[0]['content']
-        assert instructions[0] in new_messages[0]['content']
-        assert instructions[1] in new_messages[0]['content']
-        assert new_messages[0]['content'].count(instructions[1]) == 1
+    # async def test__inject_context__empty_resource_context_with_instructions(self):
+    #     messages = [
+    #         {
+    #         'role': 'user',
+    #         'content': 'Test message',
+    #         },
+    #     ]
+    #     messages_cached = deepcopy(messages)
+    #     instructions = [
+    #         'Test Instruction 1',
+    #         'Test Instruction 2',
+    #         'Test Instruction 2',
+    #     ]
+    #     new_messages = inject_context(messages, resource_context=None, instructions=instructions)
+    #     assert messages_cached == messages  # no side effects
+    #     assert new_messages[0]['role'] == 'user'
+    #     assert messages[0]['content'] in new_messages[0]['content']
+    #     assert instructions[0] in new_messages[0]['content']
+    #     assert instructions[1] in new_messages[0]['content']
+    #     assert new_messages[0]['content'].count(instructions[1]) == 1
 
-    async def test__inject_context__resource_context_with_empty_instructions(self):
-        messages = [
-            {
-            'role': 'user',
-            'content': 'Test message',
-            },
-        ]
-        messages_cached = deepcopy(messages)
-        context = "Test context"
-        new_messages = inject_context(messages, resource_context=context, instructions=None)
-        assert messages_cached == messages  # no side effects
-        assert new_messages[0]['role'] == 'user'
-        assert messages[0]['content'] in new_messages[0]['content']
-        assert context in new_messages[0]['content']
+    # async def test__inject_context__resource_context_with_empty_instructions(self):
+    #     messages = [
+    #         {
+    #         'role': 'user',
+    #         'content': 'Test message',
+    #         },
+    #     ]
+    #     messages_cached = deepcopy(messages)
+    #     context = "Test context"
+    #     new_messages = inject_context(messages, resource_context=context, instructions=None)
+    #     assert messages_cached == messages  # no side effects
+    #     assert new_messages[0]['role'] == 'user'
+    #     assert messages[0]['content'] in new_messages[0]['content']
+    #     assert context in new_messages[0]['content']
 
-    async def test__inject_context__resource_context_with_instructions(self):
-        messages = [
-            {
-            'role': 'user',
-            'content': 'Test message',
-            },
-        ]
-        messages_cached = deepcopy(messages)
-        instructions = [
-            'Test Instruction 1',
-            'Test Instruction 2',
-            'Test Instruction 2',
-        ]
-        context = "Test context"
-        new_messages = inject_context(
-            messages,
-            resource_context=context,
-            instructions=instructions,
-        )
-        assert messages_cached == messages  # no side effects
-        assert new_messages[0]['role'] == 'user'
-        assert messages[0]['content'] in new_messages[0]['content']
-        assert instructions[0] in new_messages[0]['content']
-        assert instructions[1] in new_messages[0]['content']
-        assert new_messages[0]['content'].count(instructions[1]) == 1
-        assert context in new_messages[0]['content']
+    # async def test__inject_context__resource_context_with_instructions(self):
+    #     messages = [
+    #         {
+    #         'role': 'user',
+    #         'content': 'Test message',
+    #         },
+    #     ]
+    #     messages_cached = deepcopy(messages)
+    #     instructions = [
+    #         'Test Instruction 1',
+    #         'Test Instruction 2',
+    #         'Test Instruction 2',
+    #     ]
+    #     context = "Test context"
+    #     new_messages = inject_context(
+    #         messages,
+    #         resource_context=context,
+    #         instructions=instructions,
+    #     )
+    #     assert messages_cached == messages  # no side effects
+    #     assert new_messages[0]['role'] == 'user'
+    #     assert messages[0]['content'] in new_messages[0]['content']
+    #     assert instructions[0] in new_messages[0]['content']
+    #     assert instructions[1] in new_messages[0]['content']
+    #     assert new_messages[0]['content'].count(instructions[1]) == 1
+    #     assert context in new_messages[0]['content']
 
 
 @pytest.mark.asyncio
@@ -2106,7 +2111,7 @@ class TestConfigurationService:
         """Test getting model configs when none exist."""
         stub = chat_pb2_grpc.ConfigurationServiceStub(grpc_channel)
         response = await stub.get_model_configs(empty_pb2.Empty())
-        assert len(response.configs) == EXPECTED_NUMBER_OF_CONFIGS
+        assert len(response.configs) == EXPECTED_NUM_MODEL_CONFIGS
 
     async def test__model_config__crud_operations(self, grpc_channel):  # noqa: ANN001
         """Test Create, Read, Update, Delete operations for model configs."""
@@ -2135,7 +2140,7 @@ class TestConfigurationService:
         assert saved_config.config.model_parameters.max_tokens == new_config.config.model_parameters.max_tokens  # noqa: E501
         # Get all configs
         get_response = await stub.get_model_configs(empty_pb2.Empty())
-        assert len(get_response.configs) == EXPECTED_NUMBER_OF_CONFIGS + 1
+        assert len(get_response.configs) == EXPECTED_NUM_MODEL_CONFIGS + 1
         assert get_response.configs[-1] == saved_config
 
         # Update config
@@ -2158,7 +2163,7 @@ class TestConfigurationService:
 
         # Verify deletion
         get_response = await stub.get_model_configs(empty_pb2.Empty())
-        assert len(get_response.configs) == EXPECTED_NUMBER_OF_CONFIGS
+        assert len(get_response.configs) == EXPECTED_NUM_MODEL_CONFIGS
 
     async def test__delete_model_config__nonexistent(self, grpc_channel):  # noqa: ANN001
         """Test deleting non-existent config."""

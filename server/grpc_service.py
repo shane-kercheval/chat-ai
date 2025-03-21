@@ -1,13 +1,11 @@
 """Main gRPC service for the agent's chat service."""
 import argparse
 from collections.abc import AsyncGenerator
-from copy import deepcopy
 from dataclasses import dataclass
 import logging
 import logging.config
 import os
 import sys
-import textwrap
 from uuid import uuid4
 import aiofiles
 import grpc
@@ -31,7 +29,7 @@ from server.agents.context_strategy_agent import ContextType
 from server.async_merge import AsyncMerge
 from server.model_config_manager import ModelConfigManager
 from server.supported_models import SupportedModels
-from sik_llms import TextChunkEvent, ResponseSummary, RegisteredClients, create_client
+from sik_llms import TextChunkEvent, TextResponse, RegisteredClients, create_client
 from server.conversation_manager import (
     ConversationManager,
     ConversationNotFoundError,
@@ -79,35 +77,35 @@ class ConfigurationServiceConfig:
     default_model_configs: list[dict]
 
 
-def inject_context(
-        messages: list[dict],
-        resource_context: str | None,
-        instructions: list[str] | None,
-    ) -> list[dict]:
-    """Inject context into the user message."""
-    messages = deepcopy(messages)
-    final_context = ""
-    if resource_context:
-        final_context = f"# Use the following context for your response if applicable:\n\n{resource_context}\n\n---\n\n"  # noqa: E501
-        logging.info(f"Using resource context with {len(resource_context):,} characters.")
+# def inject_context(
+#         messages: list[dict],
+#         resource_context: str | None,
+#         instructions: list[str] | None,
+#     ) -> list[dict]:
+#     """Inject context into the user message."""
+#     messages = deepcopy(messages)
+#     final_context = ""
+#     if resource_context:
+#         final_context = f"# Use the following context for your response if applicable:\n\n{resource_context}\n\n---\n\n"  # noqa: E501
+#         logging.info(f"Using resource context with {len(resource_context):,} characters.")
 
-    if instructions:
-        instructions = [
-            textwrap.dedent(i.strip())
-            for i in instructions
-            if i and i.strip()  # Filter out empty/whitespace instructions
-        ]
-        # remove duplicate instructions
-        instructions = list(set(instructions))
-        if instructions:
-            instructions = '\n\n'.join(instructions)
-            final_context += f'# Use the following instructions for your response:\n\n{instructions}\n\n---\n\n'  # noqa: E501
+#     if instructions:
+#         instructions = [
+#             textwrap.dedent(i.strip())
+#             for i in instructions
+#             if i and i.strip()  # Filter out empty/whitespace instructions
+#         ]
+#         # remove duplicate instructions
+#         instructions = list(set(instructions))
+#         if instructions:
+#             instructions = '\n\n'.join(instructions)
+#             final_context += f'# Use the following instructions for your response:\n\n{instructions}\n\n---\n\n'  # noqa: E501
 
-    # Create new message with instructions + original content
-    # TODO: this assumes the user message is the last message; i don't know why it
-    # wouldn't be; but not sure i want to raise an exception if it isn't
-    messages[-1]['content'] = f"{final_context}{messages[-1]['content']}"
-    return messages
+#     # Create new message with instructions + original content
+#     # TODO: this assumes the user message is the last message; i don't know why it
+#     # wouldn't be; but not sure i want to raise an exception if it isn't
+#     messages[-1]['content'] = f"{final_context}{messages[-1]['content']}"
+#     return messages
 
 
 def proto_to_dict(proto_obj) -> dict[str, object]:  # noqa: ANN001
@@ -249,7 +247,6 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
         finally:
             self.event_subscribers.remove(queue)
 
-
     async def _run_function_agent(
         self,
         messages: list[dict],
@@ -306,7 +303,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             # Yield final response with consolidated output
             yield None, event_handler.get_output()
 
-    async def _process_model(
+    async def _process_model(  # noqa: PLR0912
         self,
         model_config: chat_pb2.ModelConfig,
         instructions: list[str],
@@ -332,12 +329,6 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             logging.info(f"top_p: `{params.top_p if params.HasField("top_p") else None}`")
             logging.info(f"enable_tools: `{enable_tools}`")
 
-            model_client = create_client(
-                client_type=client_type,
-                model_name=model_name,
-                **proto_to_dict(params),
-            )
-
             # Get conversation history
             messages = await self.conversation_manager.get_messages(conv_id)
             model_messages = convert_proto_messages_to_model_messages(
@@ -352,7 +343,6 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                 raise ValueError(f"No messages found for conversation `{conv_id}`")
 
             if enable_tools:
-                print("Tools enabled")
                 # Create queue for tool events
                 tool_output = None
                 async for response, output in self._run_function_agent(
@@ -371,12 +361,23 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                 tool_output = f"# Tool Processing Results:\n\nThe following is additional information from a tool used, please incorporate the information into your response.\n\n{tool_output}\n\n"  # noqa: E501
                 model_messages[-1]['content'] = f"{model_messages[-1]['content']}\n\n{tool_output}"
 
-            model_messages = inject_context(
-                messages=model_messages,
-                resource_context=resource_context,
-                instructions=instructions,
+            # model_messages = inject_context(
+            #     messages=model_messages,
+            #     resource_context=resource_context,
+            #     instructions=instructions,
+            # )
+            cache_context = []
+            if resource_context:
+                cache_context.append(resource_context)
+            if instructions:
+                cache_context.extend(instructions)
+            model_client = create_client(
+                client_type=client_type,
+                model_name=model_name,
+                cache_content=cache_context,
+                **proto_to_dict(params),
             )
-            async for response in model_client.run_async(messages=model_messages):
+            async for response in model_client.stream(messages=model_messages):
                 if context.cancelled():
                     return
                 if isinstance(response, TextChunkEvent):
@@ -390,14 +391,18 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                         entry_id=response_id,
                         request_entry_id=request_id,
                     )
-                elif isinstance(response, ResponseSummary):
+                elif isinstance(response, TextResponse):
                     yield chat_pb2.ChatStreamResponse(
                         conversation_id=conv_id,
                         summary=chat_pb2.ChatStreamResponse.Summary(
                             input_tokens=response.input_tokens,
                             output_tokens=response.output_tokens,
-                            input_cost=response.input_cost,
-                            output_cost=response.output_cost,
+                            cache_write_tokens=response.cache_write_tokens or 0,
+                            cache_read_tokens=response.cache_read_tokens or 0,
+                            input_cost=response.input_cost or 0.0,
+                            output_cost=response.output_cost or 0.0,
+                            cache_write_cost=response.cache_write_cost or 0.0,
+                            cache_read_cost=response.cache_read_cost or 0.0,
                             duration_seconds=response.duration_seconds,
                         ),
                         model_index=model_index,
@@ -988,6 +993,7 @@ class ConfigurationService(chat_pb2_grpc.ConfigurationServiceServicer):
             context.set_code(grpc.StatusCode.INTERNAL)
             context.set_details(str(e))
             raise
+
 
 def parse_args() -> argparse.Namespace:
     """Parse command line arguments."""

@@ -21,6 +21,15 @@ run-server-default-mcp: proto
 		--mcp-config '/Users/shanekercheval/repos/chat-ai/server/mcp_server/mcp_fake_server_config.json' \
 		$(ARGS)
 
+run-server-jupyter-mcp: proto
+	# uv pip install jupyterlab jupyter-collaboration ipykernel
+	# uv run jupyter lab --port 8888 --IdentityProvider.token MY_TOKEN --ip 0.0.0.0
+	# start docker e.g. docker desktop or daemon
+	PYTHONPATH=$PYTHONPATH:.:./proto/generated \
+		uv run server/grpc_service.py \
+		--mcp-config '/Users/shanekercheval/repos/chat-ai/server/mcp_server/mcp_jupyter_config.json' \
+		$(ARGS)
+
 run-client: electron-proto
 	cd client && npm start
 

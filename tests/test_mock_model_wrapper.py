@@ -4,7 +4,7 @@ from sik_llms import (
     create_client,
     Client,
     TextChunkEvent,
-    ResponseSummary,
+    TextResponse,
     Tool,
     Parameter,
 )
@@ -37,7 +37,7 @@ async def test_mock_wrapper_default_response() -> None:
     client = MockAsyncOpenAICompletionWrapper(model_name="gpt-4")
     messages = [{"role": "user", "content": "Hello"}]
     response_text = ""
-    async for response in client.run_async(messages):
+    async for response in client.stream(messages):
         if isinstance(response, TextChunkEvent):
             response_text += response.content
     assert response_text.strip() == "This is a mock response."
@@ -52,12 +52,12 @@ async def test_mock_wrapper_custom_response() -> None:
     messages = [{"role": "user", "content": "Hello"}]
     response_text = ""
     responses = []
-    async for response in client.run_async(messages):
+    async for response in client.stream(messages):
         responses.append(response)
         if isinstance(response, TextChunkEvent):
             response_text += response.content
     assert response_text.strip() == "Custom mock response"
-    assert isinstance(responses[-1], ResponseSummary)
+    assert isinstance(responses[-1], TextResponse)
 
 
 @pytest.mark.asyncio
@@ -72,21 +72,21 @@ async def test_mock_wrapper_multiple_responses() -> None:
     messages = [{"role": "user", "content": "Hello"}]
     response_text = ""
     responses = []
-    async for response in client.run_async(messages):
+    async for response in client.stream(messages):
         responses.append(response)
         if isinstance(response, TextChunkEvent):
             response_text += response.content
     assert response_text.strip() == "Custom mock response 1"
-    assert isinstance(responses[-1], ResponseSummary)
+    assert isinstance(responses[-1], TextResponse)
 
     response_text = ""
     responses = []
-    async for response in client.run_async(messages):
+    async for response in client.stream(messages):
         responses.append(response)
         if isinstance(response, TextChunkEvent):
             response_text += response.content
     assert response_text.strip() == "Custom mock response 2"
-    assert isinstance(responses[-1], ResponseSummary)
+    assert isinstance(responses[-1], TextResponse)
 
 
 @pytest.fixture
@@ -134,7 +134,7 @@ async def test_mock_function_wrapper(
         mock_responses={'name': 'test_function', 'arguments': {'param1': 'value1', 'param2': 2}},
     )
     messages = [{"role": "user", "content": "Test message"}]
-    response = await client.run_async(messages)
+    response = await client.stream(messages)
     assert response.tool_prediction.name == "test_function"
     assert response.tool_prediction.arguments == {"param1": "value1", "param2": 2}
     assert response.input_tokens > 0
@@ -156,7 +156,7 @@ async def test_mock_function_wrapper__multiple_responses(
         ],
     )
     messages = [{"role": "user", "content": "Test message"}]
-    response = await client.run_async(messages)
+    response = await client.stream(messages)
     assert response.tool_prediction.name == "test_function_1"
     assert response.tool_prediction.arguments == {"param1": "value1", "param2": 2}
     assert response.input_tokens > 0
@@ -164,6 +164,6 @@ async def test_mock_function_wrapper__multiple_responses(
     assert response.input_cost > 0
     assert response.output_cost > 0
 
-    response = await client.run_async(messages)
+    response = await client.stream(messages)
     assert response.tool_prediction.name == "test_function_2"
     assert response.tool_prediction.arguments == {"param3": "value2", "param4": 3}

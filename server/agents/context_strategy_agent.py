@@ -127,12 +127,12 @@ class ContextStrategyAgent:
             *messages,
             system_message(STRUCTURED_OUTPUT_INSTRUCTIONS + "\n\n" + prompt),
         ]
-        async for response in self.model_client.run_async(messages=messages):
+        async for response in self.model_client.stream(messages=messages):
             pass  # response_format only returns one response
-        if response.response.refusal:
-            raise ValueError(f"Model refused to provide structured output: '{response.response.refusal}'")  # noqa: E501
+        if response.refusal:
+            raise ValueError(f"Model refused to provide structured output: '{response.refusal}'")
 
-        strategies = response.response.parsed.strategies
+        strategies = response.parsed.strategies
         # for any missing strategy, add a default IGNORE strategy
         for resource_name in resource_names:
             if not any(s.resource_name == resource_name for s in strategies):

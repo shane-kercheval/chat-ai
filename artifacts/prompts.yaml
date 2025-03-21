@@ -157,3 +157,21 @@ prompts:
       1. The improved version
       2. A brief explanation of key changes made
       3. Any suggestions for further improvements the author might consider
+  - id: 1700A68F-F0E8-40DB-8E0C-532F691406BE
+    type: compare
+    version: "1.0"
+    description: "Compare Approaches"
+    template: |
+      Compare and contrast the following approaches:
+
+      [APPROACH 1]
+
+      {{approach1}}
+
+      [APPROACH 2]
+
+      {{approach2}}
+
+      ---
+
+      What are the key similarities/differences and pros/cons of each approach? Which approach would you recommend and why? Can these approaches be combined to offer a better solution?

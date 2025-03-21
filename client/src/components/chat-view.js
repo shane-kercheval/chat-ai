@@ -149,8 +149,12 @@ export class ChatView {
             totalMessages: document.getElementById('total-messages'),
             totalInputTokens: document.getElementById('total-input-tokens'),
             totalOutputTokens: document.getElementById('total-output-tokens'),
+            totalCacheWriteTokens: document.getElementById('total-cache-write-tokens'),
+            totalCacheReadTokens: document.getElementById('total-cache-read-tokens'),
             totalInputCost: document.getElementById('total-input-cost'),
             totalOutputCost: document.getElementById('total-output-cost'),
+            totalCacheWriteCost: document.getElementById('total-cache-write-cost'),
+            totalCacheReadCost: document.getElementById('total-cache-read-cost'),
             totalCost: document.getElementById('total-cost')
         };
     }
@@ -746,9 +750,17 @@ export class ChatView {
         this.elements.totalMessages.textContent = totals.messages;
         this.elements.totalInputTokens.textContent = totals.inputTokens;
         this.elements.totalOutputTokens.textContent = totals.outputTokens;
+        this.elements.totalCacheWriteTokens.textContent = totals.cacheWriteTokens;
+        this.elements.totalCacheReadTokens.textContent = totals.cacheReadTokens;
         this.elements.totalInputCost.textContent = totals.inputCost.toFixed(5);
         this.elements.totalOutputCost.textContent = totals.outputCost.toFixed(5);
-        this.elements.totalCost.textContent = (totals.inputCost + totals.outputCost).toFixed(5);
+        this.elements.totalCacheWriteCost.textContent = totals.cacheWriteCost.toFixed(5);
+        this.elements.totalCacheReadCost.textContent = totals.cacheReadCost.toFixed(5);
+        
+        // Calculate total cost including cache costs
+        const totalCost = totals.inputCost + totals.outputCost + 
+            totals.cacheWriteCost + totals.cacheReadCost;
+        this.elements.totalCost.textContent = totalCost.toFixed(5);
     }
 }
 
