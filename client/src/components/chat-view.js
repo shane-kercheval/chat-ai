@@ -238,18 +238,18 @@ export class ChatView {
                         '</div>'
                     ].join('');
             
-                    if (data.toolName) {
-                        content += [
-                            '<div>',
-                            '<strong>Tool Call:</strong>',
-                            `<span class="tool-name">tool: ${data.toolName}</span><br>`,
-                            '<span class="tool-label">arguments:</span>',
-                            '<pre>',
-                            JSON.stringify(data.toolArgs, null, 2),
-                            '</pre>',
-                            '</div>'
-                        ].join('');
-                    }
+                    // if (data.toolName) {
+                    //     content += [
+                    //         '<div>',
+                    //         '<strong>Tool Call:</strong>',
+                    //         `<span class="tool-name">tool: ${data.toolName}</span><br>`,
+                    //         '<span class="tool-label">arguments:</span>',
+                    //         '<pre>',
+                    //         JSON.stringify(data.toolArgs, null, 2),
+                    //         '</pre>',
+                    //         '</div>'
+                    //     ].join('');
+                    // }
                     break;
                 case 2: // TOOL_EXECUTION_START
                     content = [
