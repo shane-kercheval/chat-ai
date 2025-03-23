@@ -133,7 +133,7 @@ message ChatRequest {
     repeated string instructions = 6;
     // metadata dictionary to track additional information that will get captured in history
     map<string, string> metadata = 7;
-    optional bool enable_tools = 8;
+    optional bool enable_reasoning = 8;
 }
 
 message ChatStreamResponse {

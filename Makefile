@@ -18,7 +18,7 @@ run-server: proto
 run-server-default-mcp: proto
 	PYTHONPATH=$PYTHONPATH:.:./proto/generated \
 		uv run server/grpc_service.py \
-		--mcp-config '/Users/shanekercheval/repos/chat-ai/server/mcp_server/mcp_fake_server_config.json' \
+		--mcp-config '/Users/shanekercheval/repos/chat-ai/server/mcp/mcp_fake_server_config.json' \
 		$(ARGS)
 
 run-server-jupyter-mcp: proto
@@ -27,7 +27,7 @@ run-server-jupyter-mcp: proto
 	# start docker e.g. docker desktop or daemon
 	PYTHONPATH=$PYTHONPATH:.:./proto/generated \
 		uv run server/grpc_service.py \
-		--mcp-config '/Users/shanekercheval/repos/chat-ai/server/mcp_server/mcp_jupyter_config.json' \
+		--mcp-config '/Users/shanekercheval/repos/chat-ai/server/mcp/mcp_jupyter_config.json' \
 		$(ARGS)
 
 run-client: electron-proto

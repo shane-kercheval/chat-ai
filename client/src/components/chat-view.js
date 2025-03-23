@@ -227,6 +227,10 @@ export class ChatView {
                     content = `<div><em>Thinking iteration ${data.iteration + 1}...</em></div>`;
                     break;
                 case 1: // THOUGHT
+                    if (!data.thought) {
+                        content = `<div><em>Thinking...</em></div>`;
+                        break;
+                    }
                     content = [
                         '<div>',
                         `<strong>Thought:</strong>`,
@@ -234,27 +238,31 @@ export class ChatView {
                         '</div>'
                     ].join('');
             
-                    if (data.toolName) {
-                        content += [
-                            '<div>',
-                            '<strong>Tool Call:</strong>',
-                            `<span class="tool-name">tool: ${data.toolName}</span><br>`,
-                            '<span class="tool-label">arguments:</span>',
-                            '<pre>',
-                            JSON.stringify(data.toolArgs, null, 2),
-                            '</pre>',
-                            '</div>'
-                        ].join('');
-                    }
+                    // if (data.toolName) {
+                    //     content += [
+                    //         '<div>',
+                    //         '<strong>Tool Call:</strong>',
+                    //         `<span class="tool-name">tool: ${data.toolName}</span><br>`,
+                    //         '<span class="tool-label">arguments:</span>',
+                    //         '<pre>',
+                    //         JSON.stringify(data.toolArgs, null, 2),
+                    //         '</pre>',
+                    //         '</div>'
+                    //     ].join('');
+                    // }
                     break;
-                // case 2: // TOOL_EXECUTION_START
-                //     content = [
-                //         '<div>',
-                //         '<strong>Executing Tool:</strong>',
-                //         `<span class="tool-name">${data.toolName}</span>`,
-                //         '</div>'
-                //     ].join('');
-                //     break;
+                case 2: // TOOL_EXECUTION_START
+                    content = [
+                        '<div>',
+                        '<strong>Tool Execution:</strong>',
+                        `<span class="tool-name">tool: ${data.toolName}</span><br>`,
+                        '<span class="tool-label">argument:</span>',
+                        '<pre>',
+                        JSON.stringify(data.toolArgs, null, 2),
+                        '</pre>',
+                        '</div>'
+                    ].join('');
+                    break;
                 case 3: // TOOL_EXECUTION_RESULT
                     let resultValue = data.result;
                     try {

@@ -35,7 +35,7 @@ function sendChatRequest(
         instructions = [],
         resources = [],
         contextStrategy = null,
-        enableTools = false)
+        enableReasoning = false)
     {
     // Create the chat message
     const chatMessage = new ChatMessage();
@@ -47,7 +47,7 @@ function sendChatRequest(
     request.setConversationId(conversationId);
     request.setMessagesList([chatMessage]);
     request.setInstructionsList(instructions);
-    request.setEnableTools(enableTools);
+    request.setEnableReasoning(enableReasoning);
 
     // Convert each model config to protobuf ModelConfig
     const protoModelConfigs = modelConfigs.map(config => {
