@@ -13,23 +13,23 @@ import asyncio
 from google.protobuf import timestamp_pb2, empty_pb2
 from sentence_transformers import SentenceTransformer
 import yaml
-from server.mcp_server.mcp_manager import MCPClientManager
-from server.mcp_server.utilities import convert_mcp_tools_to_functions
-from server.mcp_server.functions_agent import (
-    AgentEvent,
-    Function as AgentFunction,
-    FunctionAgent,
-    ModelConfiguration,
-    ThinkStartEvent,
-    ThoughtEvent,
-    ToolExecutionResultEvent, ToolExecutionStartEvent,
-)
 from proto.generated import chat_pb2, chat_pb2_grpc
 from server.agents.context_strategy_agent import ContextType
 from server.async_merge import AsyncMerge
 from server.model_config_manager import ModelConfigManager
 from server.supported_models import SupportedModels
-from sik_llms import TextChunkEvent, TextResponse, RegisteredClients, create_client
+from sik_llms import (
+    ErrorEvent,
+    TextChunkEvent,
+    TextResponse,
+    RegisteredClients,
+    ThinkingEvent,
+    ToolPredictionEvent,
+    ToolResultEvent,
+    create_client,
+    ReasoningAgent,
+)
+from sik_llms.mcp_manager import MCPClientManager
 from server.conversation_manager import (
     ConversationManager,
     ConversationNotFoundError,
@@ -77,102 +77,10 @@ class ConfigurationServiceConfig:
     default_model_configs: list[dict]
 
 
-# def inject_context(
-#         messages: list[dict],
-#         resource_context: str | None,
-#         instructions: list[str] | None,
-#     ) -> list[dict]:
-#     """Inject context into the user message."""
-#     messages = deepcopy(messages)
-#     final_context = ""
-#     if resource_context:
-#         final_context = f"# Use the following context for your response if applicable:\n\n{resource_context}\n\n---\n\n"  # noqa: E501
-#         logging.info(f"Using resource context with {len(resource_context):,} characters.")
-
-#     if instructions:
-#         instructions = [
-#             textwrap.dedent(i.strip())
-#             for i in instructions
-#             if i and i.strip()  # Filter out empty/whitespace instructions
-#         ]
-#         # remove duplicate instructions
-#         instructions = list(set(instructions))
-#         if instructions:
-#             instructions = '\n\n'.join(instructions)
-#             final_context += f'# Use the following instructions for your response:\n\n{instructions}\n\n---\n\n'  # noqa: E501
-
-#     # Create new message with instructions + original content
-#     # TODO: this assumes the user message is the last message; i don't know why it
-#     # wouldn't be; but not sure i want to raise an exception if it isn't
-#     messages[-1]['content'] = f"{final_context}{messages[-1]['content']}"
-#     return messages
-
-
 def proto_to_dict(proto_obj) -> dict[str, object]:  # noqa: ANN001
     """Convert protobuf message to dictionary with proper casing."""
     from google.protobuf.json_format import MessageToDict
     return MessageToDict(proto_obj, preserving_proto_field_name=True)
-
-
-class ToolEventHandler:
-    """Handle tool events and build consolidated output string."""
-
-    def __init__(self, conv_id: str, model_index: int, request_id: str, response_id: str):
-        self.consolidated_output = []
-        self.conv_id = conv_id
-        self.model_index = model_index
-        self.request_id = request_id
-        self.response_id = response_id
-        self.response_queue = asyncio.Queue()
-
-    async def handle_event(self, event: AgentEvent) -> None:
-        """Handle tool events - build output string and queue response for client."""
-        # Create response for client
-        response = chat_pb2.ChatStreamResponse()
-        response.conversation_id = self.conv_id
-        response.model_index = self.model_index
-        response.entry_id = self.response_id
-        response.request_entry_id = self.request_id
-
-        tool_event = response.tool_event
-        if isinstance(event, ThinkStartEvent):
-            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.THINK_START
-            tool_event.iteration = event.iteration
-            self.consolidated_output.append(f"\nThinking iteration {event.iteration + 1}...")
-        elif isinstance(event, ThoughtEvent):
-            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.THOUGHT
-            tool_event.iteration = event.iteration
-            tool_event.thought = event.thought
-            self.consolidated_output.append(f"\nThought: {event.thought}")
-            if event.tool_name:
-                tool_event.tool_name = event.tool_name
-                # Convert all values to strings before updating the map
-                if event.tool_args:
-                    tool_event.tool_args.update({k: str(v) for k, v in event.tool_args.items()})
-                self.consolidated_output.append(
-                    f"\nUsing tool: {event.tool_name} with args {event.tool_args}",
-                )
-        elif isinstance(event, ToolExecutionStartEvent):
-            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_START
-            tool_event.iteration = event.iteration
-            tool_event.tool_name = event.tool_name
-            # Convert all values to strings before updating the map
-            if event.tool_args:
-                tool_event.tool_args.update({k: str(v) for k, v in event.tool_args.items()})
-            self.consolidated_output.append(f"\nExecuting {event.tool_name}...")
-        elif isinstance(event, ToolExecutionResultEvent):
-            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_RESULT
-            tool_event.iteration = event.iteration
-            tool_event.tool_name = event.tool_name
-            tool_event.result = str(event.result)
-            self.consolidated_output.append(f"\nResult from {event.tool_name}: {event.result}")
-
-        # Queue the response for the client
-        await self.response_queue.put(response)
-
-    def get_output(self) -> str:
-        """Get the consolidated output string."""
-        return "\n".join(self.consolidated_output)
 
 
 class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
@@ -247,63 +155,8 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
         finally:
             self.event_subscribers.remove(queue)
 
-    async def _run_function_agent(
-        self,
-        messages: list[dict],
-        model_config: chat_pb2.ModelConfig,
-        conv_id: str,
-        model_index: int,
-        request_id: str,
-        response_id: str,
-    ) -> str: # type: ignore
-        """Run function agent and return consolidated output."""
-        # Create event handler that will manage both output string and client responses
-        event_handler = ToolEventHandler(conv_id, model_index, request_id, response_id)
 
-        server_config_path = self.config.mcp_server_config_path
-        if not server_config_path or not os.path.exists(server_config_path):
-            raise ValueError(f"MCP server config path `{server_config_path}` not found or invalid")
-
-        async with MCPClientManager(server_config_path) as manager:
-            mcp_tools = await manager.list_tools()
-            if not mcp_tools:
-                raise ValueError("No tools found on any connected MCP servers")
-
-            functions = await convert_mcp_tools_to_functions(mcp_tools, manager)
-
-            # Add list_tools function
-            async def list_tools() -> list[dict]:
-                return await manager.list_tools()
-
-            list_tools_function = AgentFunction(
-                name='list_tools',
-                description='List available tools from all connected MCP servers.',
-                parameters=[],
-                func=list_tools,
-            )
-            functions.append(list_tools_function)
-
-            agent = FunctionAgent(
-                model_config=ModelConfiguration(
-                    model="openai/" + model_config.model_name,
-                    api_key=os.getenv("OPENAI_API_KEY"),
-                ),
-                tools=functions,
-                callback=event_handler.handle_event,
-            )
-            agent_task = asyncio.create_task(agent(messages=messages))
-            # Stream responses from the queue while agent is running
-            while not agent_task.done():
-                response = await event_handler.response_queue.get()
-                yield response, None
-
-            result = await agent_task
-            if result.answer:
-                event_handler.consolidated_output.append(f"\n\nFinal tool-based answer: {result.answer}")  # noqa: E501
-            # Yield final response with consolidated output
-            yield None, event_handler.get_output()
-
-    async def _process_model(  # noqa: PLR0912
+    async def _process_model(  # noqa: PLR0912, PLR0915
         self,
         model_config: chat_pb2.ModelConfig,
         instructions: list[str],
@@ -313,7 +166,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
         response_id: str,
         resource_context: str | None,
         context: grpc.aio.ServicerContext,
-        enable_tools: bool = False,
+        enable_reasoning: bool = False,
     ) -> AsyncGenerator[chat_pb2.ChatStreamResponse, None]:
         """Process a single model's chat request."""
         try:
@@ -327,7 +180,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
             logging.info(f"temperature: `{params.temperature if params.HasField("temperature") else None}`")  # noqa: E501
             logging.info(f"max_tokens: `{params.max_tokens if params.HasField("max_tokens") else None}`")  # noqa: E501
             logging.info(f"top_p: `{params.top_p if params.HasField("top_p") else None}`")
-            logging.info(f"enable_tools: `{enable_tools}`")
+            logging.info(f"enable_reasoning: `{enable_reasoning}`")
 
             # Get conversation history
             messages = await self.conversation_manager.get_messages(conv_id)
@@ -342,76 +195,156 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                     context.set_details(f"No messages found for conversation `{conv_id}`")
                 raise ValueError(f"No messages found for conversation `{conv_id}`")
 
-            if enable_tools:
-                # Create queue for tool events
-                tool_output = None
-                async for response, output in self._run_function_agent(
-                    messages=model_messages,
-                    model_config=model_config,
-                    conv_id=conv_id,
-                    model_index=model_index,
-                    request_id=request_id,
-                    response_id=response_id,
-                ):
-                    if response:
-                        yield response  # Stream the tool events to client
-                    if output:
-                        tool_output = output  # Capture the final consolidated output
+            if enable_reasoning:
+                if self.config.mcp_server_config_path and not os.path.exists(self.config.mcp_server_config_path):  # noqa: E501
+                    raise ValueError(f"MCP server config path `{self.config.mcp_server_config_path}` not found")  # noqa: E501
 
-                tool_output = f"# Tool Processing Results:\n\nThe following is additional information from a tool used, please incorporate the information into your response.\n\n{tool_output}\n\n"  # noqa: E501
-                model_messages[-1]['content'] = f"{model_messages[-1]['content']}\n\n{tool_output}"
-
-            # model_messages = inject_context(
-            #     messages=model_messages,
-            #     resource_context=resource_context,
-            #     instructions=instructions,
-            # )
-            cache_context = []
-            if resource_context:
-                cache_context.append(resource_context)
-            if instructions:
-                cache_context.extend(instructions)
-            model_client = create_client(
-                client_type=client_type,
-                model_name=model_name,
-                cache_content=cache_context,
-                **proto_to_dict(params),
-            )
-            async for response in model_client.stream(messages=model_messages):
-                if context.cancelled():
-                    return
-                if isinstance(response, TextChunkEvent):
-                    yield chat_pb2.ChatStreamResponse(
-                        conversation_id=conv_id,
-                        chunk=chat_pb2.ChatStreamResponse.Chunk(
-                            content=response.content,
-                            logprob=response.logprob or 0.0,
-                        ),
-                        model_index=model_index,
-                        entry_id=response_id,
-                        request_entry_id=request_id,
+                tools = None
+                manager = None
+                logging.info(f"MCP server config path: {self.config.mcp_server_config_path}")
+                if self.config.mcp_server_config_path:
+                    manager = MCPClientManager(self.config.mcp_server_config_path)
+                    await manager.connect_servers()
+                    logging.info(f"Tools: {manager.get_tool_infos()}")
+                    tools = manager.get_tools()
+                try:
+                    agent = ReasoningAgent(
+                        model_name=model_config.model_name,
+                        tools=tools,
+                        max_iterations=15,
+                        temperature=0.1,
+                        generate_final_response=True,
                     )
-                elif isinstance(response, TextResponse):
-                    yield chat_pb2.ChatStreamResponse(
-                        conversation_id=conv_id,
-                        summary=chat_pb2.ChatStreamResponse.Summary(
-                            input_tokens=response.input_tokens,
-                            output_tokens=response.output_tokens,
-                            cache_write_tokens=response.cache_write_tokens or 0,
-                            cache_read_tokens=response.cache_read_tokens or 0,
-                            input_cost=response.input_cost or 0.0,
-                            output_cost=response.output_cost or 0.0,
-                            cache_write_cost=response.cache_write_cost or 0.0,
-                            cache_read_cost=response.cache_read_cost or 0.0,
-                            duration_seconds=response.duration_seconds,
-                        ),
-                        model_index=model_index,
-                        entry_id=response_id,
-                        request_entry_id=request_id,
-                    )
-                else:
-                    logging.error(f"Unknown response type: {response}")
-
+                    logging.info(f"REASONING PROMPT:\n\n{agent._create_reasoning_prompt()}")
+                    # consolidated_output = []
+                    async for event in agent.stream(model_messages):
+                        logging.info("Start loop")
+                        if context.cancelled():
+                            logging.info("Request cancelled")
+                            return
+                        reasoning_response = chat_pb2.ChatStreamResponse(
+                            conversation_id=conv_id,
+                            model_index=model_index,
+                            entry_id=response_id,
+                            request_entry_id=request_id,
+                        )
+                        if isinstance(event, ThinkingEvent):
+                            logging.info("Received ThinkingEvent")
+                            tool_event = reasoning_response.tool_event
+                            tool_event.iteration = event.iteration
+                            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.THOUGHT
+                            tool_event.thought = event.content
+                            yield reasoning_response
+                            # consolidated_output.append(f"\nThought: {event.content}")
+                        elif isinstance(event, ErrorEvent):
+                            logging.info("Received ErrorEvent")
+                            # consolidated_output.append(f"\nError: {event.content}")
+                            # TODO: determine how to handle thinking errors for client
+                            continue
+                        elif isinstance(event, ToolPredictionEvent):
+                            logging.info("Received ToolPredictionEvent")
+                            tool_event = reasoning_response.tool_event
+                            tool_event.iteration = event.iteration
+                            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_START  # noqa: E501
+                            tool_event.tool_name = event.name
+                            if event.arguments:
+                                tool_event.tool_args.update({k: str(v) for k, v in event.arguments.items()})  # noqa: E501
+                            yield reasoning_response
+                        elif isinstance(event, ToolResultEvent):
+                            logging.info("Received ToolResultEvent")
+                            tool_event = reasoning_response.tool_event
+                            tool_event.iteration = event.iteration
+                            tool_event.type = chat_pb2.ChatStreamResponse.ToolEvent.TOOL_EXECUTION_RESULT  # noqa: E501
+                            tool_event.tool_name = event.name
+                            if event.arguments:
+                                tool_event.tool_args.update({k: str(v) for k, v in event.arguments.items()})  # noqa: E501
+                            tool_event.result = event.result
+                            yield reasoning_response
+                            # consolidated_output.append(f"\nResult from tool {event.name}: {event.result}")  # noqa: E501
+                        elif isinstance(event, TextChunkEvent):
+                            logging.info("Received TextChunkEvent")
+                            yield chat_pb2.ChatStreamResponse(
+                                conversation_id=conv_id,
+                                chunk=chat_pb2.ChatStreamResponse.Chunk(
+                                    content=event.content,
+                                    logprob=event.logprob or 0.0,
+                                ),
+                                model_index=model_index,
+                                entry_id=response_id,
+                                request_entry_id=request_id,
+                            )
+                        elif isinstance(event, TextResponse):
+                            logging.info("Received TextResponse")
+                            yield chat_pb2.ChatStreamResponse(
+                                conversation_id=conv_id,
+                                summary=chat_pb2.ChatStreamResponse.Summary(
+                                    input_tokens=event.input_tokens,
+                                    output_tokens=event.output_tokens,
+                                    cache_write_tokens=event.cache_write_tokens or 0,
+                                    cache_read_tokens=event.cache_read_tokens or 0,
+                                    input_cost=event.input_cost or 0.0,
+                                    output_cost=event.output_cost or 0.0,
+                                    cache_write_cost=event.cache_write_cost or 0.0,
+                                    cache_read_cost=event.cache_read_cost or 0.0,
+                                    duration_seconds=event.duration_seconds,
+                                ),
+                                model_index=model_index,
+                                entry_id=response_id,
+                                request_entry_id=request_id,
+                            )
+                        else:
+                            logging.error(f"Unknown response type: {reasoning_response}")
+                        logging.info("End loop")
+                    logging.info("Finished reasoning")
+                finally:
+                    if manager:
+                        await manager.cleanup()
+            else:  # not enable_reasoning
+                cache_context = []
+                if resource_context:
+                    cache_context.append(resource_context)
+                if instructions:
+                    cache_context.extend(instructions)
+                model_client = create_client(
+                    client_type=client_type,
+                    model_name=model_name,
+                    cache_content=cache_context,
+                    **proto_to_dict(params),
+                )
+                async for reasoning_response in model_client.stream(messages=model_messages):
+                    if context.cancelled():
+                        return
+                    if isinstance(reasoning_response, TextChunkEvent):
+                        yield chat_pb2.ChatStreamResponse(
+                            conversation_id=conv_id,
+                            chunk=chat_pb2.ChatStreamResponse.Chunk(
+                                content=reasoning_response.content,
+                                logprob=reasoning_response.logprob or 0.0,
+                            ),
+                            model_index=model_index,
+                            entry_id=response_id,
+                            request_entry_id=request_id,
+                        )
+                    elif isinstance(reasoning_response, TextResponse):
+                        yield chat_pb2.ChatStreamResponse(
+                            conversation_id=conv_id,
+                            summary=chat_pb2.ChatStreamResponse.Summary(
+                                input_tokens=reasoning_response.input_tokens,
+                                output_tokens=reasoning_response.output_tokens,
+                                cache_write_tokens=reasoning_response.cache_write_tokens or 0,
+                                cache_read_tokens=reasoning_response.cache_read_tokens or 0,
+                                input_cost=reasoning_response.input_cost or 0.0,
+                                output_cost=reasoning_response.output_cost or 0.0,
+                                cache_write_cost=reasoning_response.cache_write_cost or 0.0,
+                                cache_read_cost=reasoning_response.cache_read_cost or 0.0,
+                                duration_seconds=reasoning_response.duration_seconds,
+                            ),
+                            model_index=model_index,
+                            entry_id=response_id,
+                            request_entry_id=request_id,
+                        )
+                    else:
+                        logging.error(f"Unknown response type: {reasoning_response}")
         except Exception as e:
             self.logger.error(f"{conv_id} - Error processing model `{model_config.model_name}`: `{e!s}`")  # noqa: E501
             await self.emit_event(
@@ -534,7 +467,7 @@ class CompletionService(chat_pb2_grpc.CompletionServiceServicer):
                     response_id=response_id,
                     resource_context=resource_context,
                     context=context,
-                    enable_tools=request.HasField('enable_tools') and request.enable_tools,
+                    enable_reasoning=request.HasField('enable_reasoning') and request.enable_reasoning,  # noqa: E501
                 )
                 for i, config in enumerate(request.model_configs)
             ]

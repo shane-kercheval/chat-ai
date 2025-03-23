@@ -466,7 +466,7 @@ requires-dist = [
     { name = "pyyaml" },
     { name = "ruff" },
     { name = "sentence-transformers", specifier = ">=3.3.1" },
-    { name = "sik-llms", specifier = "==0.3.5" },
+    { name = "sik-llms", specifier = "==0.3.8" },
 ]
 
 [[package]]
@@ -766,7 +766,7 @@ wheels = [
 
 [[package]]
 name = "mcp"
-version = "1.2.1"
+version = "1.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -778,9 +778,9 @@ dependencies = [
     { name = "starlette" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fc/30/51e4555826126e3954fa2ab1e934bf74163c5fe05e98f38ca4d0f8abbf63/mcp-1.2.1.tar.gz", hash = "sha256:c9d43dbfe943aa1530e2be8f54b73af3ebfb071243827b4483d421684806cb45", size = 103968 }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/c9/c55764824e893fdebe777ac7223200986a275c3191dba9169f8eb6d7c978/mcp-1.5.0.tar.gz", hash = "sha256:5b2766c05e68e01a2034875e250139839498c61792163a7b221fc170c12f5aa9", size = 159128 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/0d/6770742a84c8aa1d36c0d628896a380584c5759612e66af7446af07d8775/mcp-1.2.1-py3-none-any.whl", hash = "sha256:579bf9c9157850ebb1344f3ca6f7a3021b0123c44c9f089ef577a7062522f0fd", size = 66453 },
+    { url = "https://files.pythonhosted.org/packages/c1/d1/3ff566ecf322077d861f1a68a1ff025cad337417bd66ad22a7c6f7dfcfaf/mcp-1.5.0-py3-none-any.whl", hash = "sha256:51c3f35ce93cb702f7513c12406bbea9665ef75a08db909200b07da9db641527", size = 73734 },
 ]
 
 [package.optional-dependencies]
@@ -1527,19 +1527,20 @@ wheels = [
 
 [[package]]
 name = "sik-llms"
-version = "0.3.5"
+version = "0.3.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anthropic" },
+    { name = "mcp", extra = ["cli"] },
     { name = "nest-asyncio" },
     { name = "openai" },
     { name = "pydantic" },
     { name = "python-dotenv" },
     { name = "tiktoken" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a2/00/7f6f842578d711679d9078eca55dc42cc4df7d73435d0935f7527f180407/sik_llms-0.3.5.tar.gz", hash = "sha256:13c1b9a590e1a900ca7e480380fc1f1bc989b034a6336f9ac47826702da2543d", size = 85945 }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/7f/5b51a46daac769d122e7a3e17a425c7b01847de960b4d7e859fec7b5cec4/sik_llms-0.3.8.tar.gz", hash = "sha256:ebe6db2dee25a55f008686ae052fd678d76acb6d3a9d7a29e10f711595079cd5", size = 95412 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f1/12/08428e49ee1eb7b15043fc0483c97453d0ef6bb4ae464a287772ae14c9bb/sik_llms-0.3.5-py3-none-any.whl", hash = "sha256:d3547bc24fdd528981942cce5a263844e43553861ccec3df3803f4224479fec6", size = 32564 },
+    { url = "https://files.pythonhosted.org/packages/0b/59/15598c0eade415e5bd2164ea907f523853aa4813bc8b7efa78b6bb63f527/sik_llms-0.3.8-py3-none-any.whl", hash = "sha256:6e2d371f58f7a360b2aded418d97c5971733c09a0f11756693a3410b712eef5d", size = 36414 },
 ]
 
 [[package]]

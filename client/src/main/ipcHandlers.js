@@ -18,7 +18,7 @@ const grpc = require('@grpc/grpc-js');
 let activeCall = null;
 
 function setupIpcHandlers(mainWindow) {
-    ipcMain.handle('send-message', async (event, messageText, modelConfigs, conversationId, instructions, resources, contextStrategy, enableTools) => {
+    ipcMain.handle('send-message', async (event, messageText, modelConfigs, conversationId, instructions, resources, contextStrategy, enableReasoning) => {
         try {
             // Clean up any existing call
             if (activeCall) {
@@ -34,7 +34,7 @@ function setupIpcHandlers(mainWindow) {
                 instructions,
                 resources,
                 contextStrategy,
-                enableTools
+                enableReasoning
             );
             activeCall = call;
     

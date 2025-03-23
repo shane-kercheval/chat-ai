@@ -1642,6 +1642,58 @@ class TestCompletionService:
 
 
 @pytest.mark.asyncio
+class TestReasoning:
+    """Test reasoning functionality."""
+
+    @pytest.mark.asyncio
+    async def test__chat__with_reasoning_enabled(self, grpc_channel: grpc.aio.Channel):
+        """Test that reasoning is enabled when requested."""
+        stub = chat_pb2_grpc.CompletionServiceStub(grpc_channel)
+
+        # Create a chat request with reasoning enabled
+        request = chat_pb2.ChatRequest(
+            model_configs=[get_default_model_config('OPENAI_API_KEY')],
+            messages=[
+                chat_pb2.ChatMessage(
+                    role=chat_pb2.Role.USER,
+                    content="What is 15 + 27?",
+                ),
+            ],
+            enable_reasoning=True,
+        )
+        # Track different types of responses
+        has_thought_events = False
+        has_chunks = False
+        has_summary = False
+        # Process the response stream
+        async for response in stub.chat(request):
+            assert not response.HasField('error')
+            # Check for different response types
+            if response.HasField('tool_event'):
+                # Check tool event types
+                if response.tool_event.type == chat_pb2.ChatStreamResponse.ToolEvent.THOUGHT:
+                    has_thought_events = True
+                    # Verify thought content exists
+                    assert isinstance(response.tool_event.thought, str)
+                    assert response.tool_event.iteration >= 0
+            elif response.WhichOneof("response_type") == "chunk":
+                has_chunks = True
+                # Verify text content exists
+                assert response.chunk.content
+            elif response.WhichOneof("response_type") == "summary":
+                has_summary = True
+                # Verify summary fields
+                assert response.summary.input_tokens > 0
+                assert response.summary.output_tokens > 0
+                assert response.summary.duration_seconds > 0
+        # Verify that we received the expected types of responses
+        assert has_chunks, "Expected to receive text chunks in the response"
+        # The reasoning process should have thought events (even if no tools are used)
+        assert has_thought_events, "Expected to see thought events with reasoning enabled"
+        assert has_summary, "Expected to receive summary in the response"
+
+
+@pytest.mark.asyncio
 class TestContextService:
     """Test the ContextService."""
 

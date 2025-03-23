@@ -123,7 +123,7 @@ export class IpcService {
             instructions = [],
             resources = [],
             contextStrategy = null,
-            enableTools = false)
+            enableReasoning = false)
     {
         return this.ipcRenderer.invoke('send-message',
             messageText,
@@ -132,7 +132,7 @@ export class IpcService {
             instructions,
             resources,
             contextStrategy,
-            enableTools
+            enableReasoning
         );
     }
 
