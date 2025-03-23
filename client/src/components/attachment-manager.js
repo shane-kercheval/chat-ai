@@ -130,7 +130,7 @@ export class AttachmentManager extends EventEmitter {
     }
 
     setupMCPToolHandler() {
-        const toolButton = document.querySelector('.mcp-tool-button');
+        const toolButton = document.querySelector('.reasoning-button');
         if (toolButton) {
             toolButton.addEventListener('click', () => {
                 this.webSearchEnabled = !this.webSearchEnabled;
