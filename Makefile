@@ -22,7 +22,7 @@ run-server-default-mcp: proto
 		$(ARGS)
 
 run-server-jupyter-mcp: proto
-	# uv pip install jupyterlab jupyter-collaboration ipykernel
+	# uv pip install jupyterlab jupyter-collaboration ipykernel matplotlib
 	# uv run jupyter lab --port 8888 --IdentityProvider.token MY_TOKEN --ip 0.0.0.0
 	# start docker e.g. docker desktop or daemon
 	PYTHONPATH=$PYTHONPATH:.:./proto/generated \
