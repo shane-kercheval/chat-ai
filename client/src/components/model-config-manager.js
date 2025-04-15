@@ -1,5 +1,4 @@
 import { UIManager } from '../utils/ui-utils.js';
-import { generateUUID } from '../utils/utils.js';
 import { AttachmentManager } from './attachment-manager.js';
 
 export class ModelConfigManager extends AttachmentManager {

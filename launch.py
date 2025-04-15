@@ -30,7 +30,7 @@ def main() -> None:
     """Launches the electron app and the gRPC server in parallel."""
         # Start electron app
     electron_process = subprocess.Popen(
-        ["make", "run-app"],
+        ["make", "run-client"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
     )

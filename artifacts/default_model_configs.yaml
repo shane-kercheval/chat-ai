@@ -1,4 +1,5 @@
 default_model_configs:
+
   - config_id: '7398FE35-5635-4297-A6F6-4AEF5AA88506'
     config_name: '4o-mini'
     config:
@@ -6,20 +7,29 @@ default_model_configs:
       model_name: 'gpt-4o-mini'
       model_parameters:
         temperature: 0.2
-  - config_id: '22A58789-1B10-46FA-B552-8DDE14407582'
-    config_name: '4o'
+
+  - config_id: '61C2C31F-7957-4C90-A5EC-AF3A6F337791'
+    config_name: '4.1'
     config:
       client_type: 'OpenAI'
-      model_name: 'gpt-4o'
+      model_name: 'gpt-4.1'
       model_parameters:
         temperature: 0.2
-  - config_id: 'FC394774-1163-410B-914B-AAA0E28D8983'
-    config_name: 'o3-mini'
+  - config_id: '5B9617CE-0AD4-4710-B860-AC2EC0E8F80D'
+    config_name: '4.1-mini'
     config:
       client_type: 'OpenAI'
-      model_name: 'o3-mini'
+      model_name: 'gpt-4.1-mini'
       model_parameters:
         temperature: 0.2
+  - config_id: '76DF9EF7-5AFE-4498-B788-E097CDFB80AE'
+    config_name: '4.1-nano'
+    config:
+      client_type: 'OpenAI'
+      model_name: 'gpt-4.1-nano'
+      model_parameters:
+        temperature: 0.2
+
   # - config_id: 'DA0AAF60-6517-4408-967A-0DB08196A6CB'
   #   config_name: 'o3-mini - Reasonsing'
   #   config:
@@ -28,13 +38,7 @@ default_model_configs:
   #     model_parameters:
   #       temperature: 0.2
   #       reasoning_effort: medium
-  - config_id: '0FD8F56C-B9C5-4477-9980-AA5885BBFA08'
-    config_name: 'Haiku 3.5'
-    config:
-      client_type: 'Anthropic'
-      model_name: 'claude-3-5-haiku-latest'
-      model_parameters:
-        temperature: 0.2
+
   - config_id: '3B72D67F-2852-4ED9-BDAA-B6DC271A3B6B'
     config_name: 'Sonnet 3.7'
     config:
@@ -42,6 +46,21 @@ default_model_configs:
       model_name: 'claude-3-7-sonnet-latest'
       model_parameters:
         temperature: 0.2
+  - config_id: '43426D94-CB80-4565-9907-FC7EB72D889A'
+    config_name: 'Sonnet 3.5'
+    config:
+      client_type: 'Anthropic'
+      model_name: 'claude-3-5-sonnet-latest'
+      model_parameters:
+        temperature: 0.2
+  - config_id: '0FD8F56C-B9C5-4477-9980-AA5885BBFA08'
+    config_name: 'Haiku 3.5'
+    config:
+      client_type: 'Anthropic'
+      model_name: 'claude-3-5-haiku-latest'
+      model_parameters:
+        temperature: 0.2
+
   # - config_id: '581A42D4-8762-4CBD-AD6A-B403F6D344C3'
   #   config_name: 'Sonnet 3.7 - Reasoning'
   #   config:
@@ -50,6 +69,23 @@ default_model_configs:
   #     model_parameters:
   #       temperature: 0.2
   #       reasoning_effort: medium
+
+  - config_id: '22A58789-1B10-46FA-B552-8DDE14407582'
+    config_name: '4o'
+    config:
+      client_type: 'OpenAI'
+      model_name: 'gpt-4o'
+      model_parameters:
+        temperature: 0.2
+
+  - config_id: 'FC394774-1163-410B-914B-AAA0E28D8983'
+    config_name: 'o3-mini'
+    config:
+      client_type: 'OpenAI'
+      model_name: 'o3-mini'
+      model_parameters:
+        temperature: 0.2
+
   - config_id: '7187070E-49DD-472F-AD06-F9311EB80C67'
     config_name: 'localhost:1234'
     config:
