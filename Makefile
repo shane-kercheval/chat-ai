@@ -30,6 +30,12 @@ run-server-jupyter-mcp: proto
 		--mcp-config '/Users/shanekercheval/repos/chat-ai/server/mcp/mcp_jupyter_config.json' \
 		$(ARGS)
 
+run-server-mcp-claude: proto
+	PYTHONPATH=$PYTHONPATH:.:./proto/generated \
+		uv run server/grpc_service.py \
+		--mcp-config '/Users/shanekercheval/Library/Application Support/Claude/claude_desktop_config.json' \
+		$(ARGS)
+
 run-client: electron-proto
 	cd client && npm start
 

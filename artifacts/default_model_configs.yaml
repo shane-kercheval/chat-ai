@@ -30,15 +30,13 @@ default_model_configs:
       model_parameters:
         temperature: 0.2
 
-  # - config_id: 'DA0AAF60-6517-4408-967A-0DB08196A6CB'
-  #   config_name: 'o3-mini - Reasonsing'
-  #   config:
-  #     client_type: 'OpenAI'
-  #     model_name: 'o3-mini'
-  #     model_parameters:
-  #       temperature: 0.2
-  #       reasoning_effort: medium
-
+  - config_id: '9F8C758F-0E09-40C5-A2D3-EBFF06C067CD'
+    config_name: 'Sonnet 4'
+    config:
+      client_type: 'Anthropic'
+      model_name: 'claude-sonnet-4-20250514'
+      model_parameters:
+        temperature: 0.2
   - config_id: '3B72D67F-2852-4ED9-BDAA-B6DC271A3B6B'
     config_name: 'Sonnet 3.7'
     config:
