@@ -12,15 +12,17 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@grpc/grpc-js": "^1.12.4",
+    "@grpc/grpc-js": "^1.13.4",
     "@grpc/proto-loader": "^0.7.13",
     "dotenv": "^16.4.7",
-    "electron": "^33.2.1",
     "google-protobuf": "^3.21.4",
-    "grpc-tools": "^1.12.4",
     "highlight.js": "^11.10.0",
     "js-yaml": "^4.1.0",
     "katex": "^0.16.8",
     "marked": "^15.0.4"
+  },
+  "devDependencies": {
+    "electron": "^37.3.0",
+    "grpc-tools": "^1.13.0"
   }
 }
